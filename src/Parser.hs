@@ -1,7 +1,6 @@
 {-#LANGUAGE PackageImports, StandaloneDeriving, DeriveDataTypeable, FlexibleContexts#-}
-module Fcr.Parser where
-import Fcr.Syntax
-import Fcr.PrettyPrinting
+module Parser where
+import Syntax
 
 import Text.Parsec hiding (ParseError,Empty, State)
 import qualified Text.Parsec as P

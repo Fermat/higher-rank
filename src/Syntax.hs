@@ -10,19 +10,17 @@ import Debug.Trace
 
 type Name = String
 
-
--- Variable convention: upper-case word represents constant and
--- lower-case word represents variable, lower-case constant represent eigenvariable
+-- Variable convention: word begins with upper-case represents constant and
+-- lower-case represents variable, lower-case constant represent eigenvariable
 
 data Exp = Var Name
           | Const Name
           | App Exp Exp
-          | TApp Exp Exp
-          | PApp Exp Exp
           | Lambda Name (Maybe Exp) Exp
-          | Abs Name Exp
           | Imply Exp Exp
           | Forall Name Exp
+          | Case Exp (Maybe Exp) [(Exp, Exp, Exp)]
+          | Let [(Name, Exp)] Exp
           deriving (Show, Eq, Ord)
 
 data Kind = Star
@@ -40,69 +38,11 @@ data Nameless = V Int
              deriving (Show, Eq)
 
                      
-data Module = Mod {decls :: [(Name, Exp)] ,
-                   prfs :: [((Name, Exp), [Tactic])],
-                   pfDecl ::[(Name, Exp, Exp)],
-                   modsteps :: [(Name, Int)]}
+data Module = Mod {decls :: [(Name, Exp, Exp)],
+                   annDecls ::[(Name, Exp, Exp)]}
             deriving (Show)
 
-getRules ls = [(n, Arrow t1 t2) | (n, Arrow t1 t2) <- ls]
-getAxioms :: [(Name, Exp)] -> [(Name, Exp)]
-getAxioms ls = do
-  (n, t) <- ls
-  case t of
-    Arrow _ _ -> []
-    a -> return (n, a)
-toFormula :: [(Name, Exp)] -> [(Name, Exp)]
-toFormula env = map (\(n,e)-> (n, helper e)) env
-   where helper a@(Arrow t t') =
-           let vars = "p" : free a in
-           foldr (\ z x -> Forall z x) (Imply (PApp (Var "p") t') (PApp (Var "p") t)) vars
-         helper a@(Imply t t') =
-           let vars = free a in
-           foldr (\ z x -> Forall z x) a vars
-         helper a = a
-
-           
-convert :: Exp -> Exp
-convert (Var x) = (Var x)
-convert (Const x) = (Const x)
-convert (PApp f1 f2) = App (convert f1) (convert f2)
-convert (Abs x f) = Lambda x Nothing (convert f)
-
-
--- A hack to get the 'reasonable' eta-long form.
--- can easily broke with complicated situation, but it is
--- safe in the sense that operationally it is fine because
--- nothing can happen with eta expansion. But it may affect the
--- reasoning though. Welp, decided not to be too clever in this case.
-expand :: Exp -> Exp
-expand b = b
 {-
-expand a@(Var x) = a
-expand a@(Const x) = Lambda "v'" Nothing (App a (Var "v'"))
-expand (Lambda x Nothing t) = Lambda x Nothing (expand t)
-expand (App (Var x) p) =  App (Var x) (expand p)
-expand (App (Const x) p) = App (Const x) (expand p)
-expand a@(App p1 p2) =
-  case flatten a of
-    (Var v): xs -> 
-      let res = map expand' xs
-      in reApp ((Var v): res)
-    b -> reApp b     
-
-
-expand' a@(Var x) =  Lambda "v'" Nothing (App a (Var "v'"))
-expand' a@(Const x) = Lambda "v'" Nothing (App a (Var "v'"))
-expand' (Lambda x Nothing t) = Lambda x Nothing (expand t)
-expand' (App (Var x) p) =  App (Var x) (expand p)
-expand' (App (Const x) p) = App (Const x) (expand p)
-expand' a@(App p1 p2) =
-  case flatten a of
-    (Var v): xs -> 
-      let res = map expand' xs
-      in reApp ((Var v): res)
--}
 -- free vars of exp
 free = S.toList . freeVar 
 -- freeVar :: Exp -> [Name]
@@ -353,3 +293,4 @@ norm (Imply t t') = Imply (norm t) (norm t')
 norm (Forall x t) = Forall x (norm t)
 
   
+-}
