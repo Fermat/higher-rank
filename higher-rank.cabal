@@ -15,16 +15,18 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
-  build-depends:       base >= 4.7 && < 5
+  exposed-modules:     Syntax, Parser
+  build-depends:       base >= 4.7 && < 5,
+                       parsec >= 3.1.11, indents >= 0.4.0.0, containers >= 0.5.7.1,
+                       mtl >= 2.2.1
   default-language:    Haskell2010
 
 executable higher-rank-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , higher-rank
+  build-depends:       base,
+                       higher-rank
   default-language:    Haskell2010
 
 test-suite higher-rank-test
@@ -32,6 +34,7 @@ test-suite higher-rank-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
+                     , containers >= 0.5.7.1
                      , higher-rank
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010

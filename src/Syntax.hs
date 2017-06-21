@@ -1,7 +1,7 @@
 module Syntax where
 
-import Control.Monad.State.Lazy
-import Control.Monad.Reader
+-- import Control.Monad.State.Lazy
+-- import Control.Monad.Reader
 
 import Data.Char
 import qualified Data.Set as S
@@ -37,10 +37,14 @@ data Nameless = V Int
               | LAM Nameless
              deriving (Show, Eq)
 
-                     
-data Module = Mod {decls :: [(Name, Exp, Exp)],
-                   annDecls ::[(Name, Exp, Exp)]}
+data DataDecl = DataDecl Name Kind [(Exp, Exp)]
+                deriving (Show)
+
+data Module = Mod {funs :: [(Name, Exp, Exp)],
+                   datas :: [DataDecl],
+                   annFuns ::[(Name, Exp, Exp)]}
             deriving (Show)
+
 
 {-
 -- free vars of exp

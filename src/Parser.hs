@@ -11,7 +11,7 @@ import qualified Text.Parsec.Token as Token
 import Text.Parsec.Indent
 import Control.Applicative hiding ((<|>),many, optional, Const)
 import Control.Monad.State.Lazy
-import "mtl" Control.Monad.Identity
+import Control.Monad.Identity
 import Control.Exception(Exception)
 
 import qualified Data.IntMap as IM
@@ -20,8 +20,9 @@ import Data.Char
 import Data.List
 
 parseModule :: String -> String -> Either P.ParseError Module
-parseModule srcName cnts =
+parseModule srcName cnts = 
  runIndent $ runParserT gModule () srcName cnts
+
 
 parseExp :: String -> Either P.ParseError Exp
 parseExp s = runIndent $ runParserT (try (parens term) <|> term) () [] s
@@ -35,21 +36,22 @@ type Parser a = IndentParser String () a
 -- instance Exception P.ParseError 
 
 -- parse module
-gModule :: Parser Module
-gModule = do
-  bs <- many (try ruleDecl)
-  ds <- many (try decl)
-  qs <- many (try proof)
-  sts <- many (try step)
-  eof
-  return $ Mod bs qs ds sts
+-- gModule :: Parser Module
+-- gModule = do
+--   bs <- many (try ruleDecl)
+--   ds <- many (try decl)
+--   eof
+--   return $ Mod bs qs ds sts
 
 
-decl :: Parser (Name, Exp, Exp)
-decl = do
+dataDecl :: Parser DataDecl
+dataDecl = do
+  reserved "data"
   n <- identifier
-  when (isUpper (head n)) $ parserFail "expected to begin with lowercase letter"
-  reservedOp ":"
+  when (isLower (head n)) $ parserFail "expected data type to begin with uppercase letter"
+  reservedOp "::"
+  k <- kind
+  reserved "where"
   formula <- term
   n' <- identifier
   when (n /= n') $ parserFail ("unexpected definition" ++ n')
@@ -60,49 +62,7 @@ decl = do
       bb = expand b'
       exp = foldr (\ x y -> Lambda x Nothing y) bb (map (\(Var x) -> x) vs)
   return $ (n, formula, exp)    
-      
   
-proof :: Parser ((Name, Exp), [Tactic])
-proof = do
-  reserved "lemma"
-  n <- identifier
-  reservedOp ":"
-  t <- term
-  reserved "proof"
-  ts <- many tactic
-  reserved "qed"
-  return ((n, t), ts)
-
-tactic :: Parser Tactic
-tactic = tacIntros <|> tacApply <|> tacUse <|> tacCoind <|> tacApplyH
-
-tacIntros = do
-  reserved "intros"
-  ns <- many1 identifier
-  return $ Intros ns
-
-tacCoind = reserved "coind" >> return Coind
-
-tacUse = do
-  reserved "use"
-  n <- identifier
-  ts <- optionMaybe term
-  case ts of
-    Nothing -> return $ Use n []
-    Just ts' -> return $ Use n (flatten ts')
-
-tacApply = do
-  reserved "apply"
-  n <- identifier
-  ts <- optionMaybe term
-  case ts of
-    Nothing -> return $ Apply n []
-    Just ts' -> return $ Apply n (flatten ts')
-
-tacApplyH = do
-  reserved "applyh"
-  n <- identifier
-  return $ ApplyH n 
   
 step :: Parser (Name, Int)
 step = do
