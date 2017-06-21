@@ -19,9 +19,9 @@ import Data.Typeable
 import Data.Char
 import Data.List
 
-parseModule :: String -> String -> Either P.ParseError Module
-parseModule srcName cnts = 
- runIndent $ runParserT gModule () srcName cnts
+-- parseModule :: String -> String -> Either P.ParseError Module
+-- parseModule srcName cnts = 
+--  runIndent $ runParserT gModule () srcName cnts
 
 
 parseExp :: String -> Either P.ParseError Exp
@@ -50,34 +50,23 @@ dataDecl = do
   n <- identifier
   when (isLower (head n)) $ parserFail "expected data type to begin with uppercase letter"
   reservedOp "::"
-  k <- kind
+  k <- ty
   reserved "where"
-  formula <- term
-  n' <- identifier
-  when (n /= n') $ parserFail ("unexpected definition" ++ n')
-  vs <- many var
-  reservedOp "="
-  b <- term
-  let b' = convert b
-      bb = expand b'
-      exp = foldr (\ x y -> Lambda x Nothing y) bb (map (\(Var x) -> x) vs)
-  return $ (n, formula, exp)    
+  ls <- block $ do{c <- con; reservedOp "::"; t <- ty; return (c, t)}
+  return $ DataDecl n k ls
   
-  
-step :: Parser (Name, Int)
-step = do
-  reserved "step"
-  n <- identifier
-  num <- integer
-  return (n, fromIntegral num)
-
     
-ruleDecl :: Parser (Name, Exp)
-ruleDecl = do
-  (Const c) <- con 
-  reservedOp ":"
-  t <- term
-  return $ (c, t)
+funDecl :: Parser (Exp, Exp, Exp)
+funDecl = do
+  v <- var
+  reservedOp "::"
+  t <- ty
+  v' <- var
+  when (v /= v') $ parserFail ("expected to function to have name " ++ show (v))
+  ps <- many pat
+  reservedOp "="
+  p <- term
+  return (v, t, p)
   
 var :: Parser Exp
 var = do
@@ -91,60 +80,76 @@ con = do
   when (isLower (head n)) $ parserFail "expected to begin with uppercase letter"
   return (Const n)
 
-eigen :: Parser Exp
-eigen = do
-  n <- brackets identifier  
-  when (isUpper (head n)) $ parserFail "expected to begin with lowercase letter"
-  return (Const n)
+star :: Parser Exp
+star = reserved "*" >> return Star
 
--- parser for FType--
--- rule :: Parser Exp
--- rule = do
---   t1 <- term
---   reserved "->"
---   t2 <- term
---   return $ Arrow t1 t2
+-- parser for types
+ty :: Parser Exp
+ty = buildExpressionParser typeOpTable bType
 
-term :: Parser Exp
-term = buildExpressionParser typeOpTable base
+bType :: Parser Exp
+bType = try atomType <|> try forall <|> parens ty
 
--- base :: Parser Exp
--- base = try compound <|> try forall <|> parens ftype
-
--- binOp :: Assoc -> String -> (a -> a -> a) -> Operator String u (State SourcePos) a
 binOp assoc op f = Infix (reservedOp op >> return f) assoc
 
--- typeOpTable :: [[Operator String u (State SourcePos) Exp]]
-typeOpTable = [[binOp AssocRight "=>" Imply, binOp AssocRight "<=" Arrow]]
+typeOpTable = [[binOp AssocRight "->" Imply]]
 
--- parse type expression
-base :: Parser Exp
-base = forall <|> lambda <|> try compound <|> try (parens term)
+atomType = do
+  n <- try star <|> try var <|> try con <|> parens atomType
+  as <- args
+  if null as then return n
+    else return $ foldl' (\ z x -> App z x) n as 
+
+args =
+  many $ indented >> (try con <|> try var <|> try (parens atomType))
+
+forall = do
+  reserved "forall"
+  as <- many1 var
+  reservedOp "."
+  p <- ty
+  return $ foldr (\ x y -> Forall x y) p (map (\(Var x) -> x) as)
+
+-- parse term
+term :: Parser Exp
+term = try lambda <|> try compound <|> try caseExp <|> parens term
 
 lambda = do
   reservedOp "\\"
   as <- many1 var
   reservedOp "."
   p <- term
-  return $ foldr (\ x y -> Abs x y) p (map (\(Var x) -> x) as)
-
-forall = do
-  reserved "forall"
-  as <- many1 var
-  reservedOp "."
-  p <- term
-  return $ foldr (\ x y -> Forall x y) p (map (\(Var x) -> x) as)
+  return $ foldr (\ x y -> Lambda x Nothing y) p (map (\(Var x) -> x) as)
 
 compound = do
-  n <- eigen <|> try var <|> con <|> parens term 
+  n <- try var <|> try con <|> parens term 
   as <- compoundArgs
   if null as then return n
-    else return $ foldl' (\ z x -> PApp z x) n as 
+    else return $ foldl' (\ z x -> App z x) n as 
 
 compoundArgs =
-  many $ indented >> (try eigen <|> try con <|> try var <|> try (parens term))
+  many $ indented >> (try con <|> try var <|> try (parens term))
+
+caseExp = do
+  reserved "case"
+  e <- term
+  reserved "of"
+  alts <- block $ do{a <- pat; reserved "->"; a' <- term; return (a, a')}
+  return $ Case e Nothing alts
+
+pat = do
+  n <- con
+  as <- patArgs
+  if null as then return n
+    else return $ foldl' (\ z x -> App z x) n as 
+
+patArgs =
+  many $ indented >> (try con <|> try var <|> try (parens pat))
 
 
+
+
+  
 -----------------------Positions -------
   
 -- wrapPos :: Parser Exp -> Parser Exp
@@ -186,48 +191,29 @@ gottlobStyle = Token.LanguageDef
                     ["\\", "->", "<=", ".","=", "::", ":", "=>"]
                 }
 
--- tokenizer :: Token.GenTokenParser String u (State SourcePos)
 tokenizer = Token.makeTokenParser gottlobStyle
 
--- identifier :: Parser String
 identifier = Token.identifier tokenizer
 
--- whiteSpace :: ParsecT String u (State SourcePos) ()
 whiteSpace = Token.whiteSpace tokenizer
 
--- reserved :: String -> ParsecT String u (State SourcePos) ()
 reserved = Token.reserved tokenizer
 
--- reservedOp :: String -> ParsecT String u (State SourcePos) ()
 reservedOp = Token.reservedOp tokenizer
 
--- operator :: ParsecT String u (State SourcePos) String
 operator = Token.operator tokenizer
 
--- colon :: ParsecT String u (State SourcePos) String
 colon = Token.colon tokenizer
 
--- integer :: ParsecT String u (State SourcePos) Integer
 integer = Token.integer tokenizer
 
--- brackets :: ParsecT String u (State SourcePos) a -> ParsecT String u (State SourcePos) a
 brackets = Token.brackets tokenizer
 
--- parens :: ParsecT String u (State SourcePos) a -> ParsecT String u (State SourcePos) a
 parens  = Token.parens tokenizer
 
--- braces :: ParsecT String u (State SourcePos) a -> ParsecT String u (State SourcePos) a
 braces = Token.braces tokenizer
 
--- dot :: ParsecT String u (State SourcePos) String
 dot = Token.dot tokenizer
 
--- -- commaSep1 :: ParsecT String u (State SourcePos) a -> ParsecT String u (State SourcePos) [a]
--- commaSep1 = Token.commaSep1 tokenizer
-
--- --semiSep1 :: ParsecT String u (State SourcePos) a -> ParsecT String u (State SourcePos) [a]
--- semiSep1 = Token.semiSep1 tokenizer
-
--- comma :: ParsecT String u (State SourcePos) String
 comma = Token.comma tokenizer
 

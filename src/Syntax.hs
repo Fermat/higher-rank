@@ -14,19 +14,16 @@ type Name = String
 -- lower-case represents variable, lower-case constant represent eigenvariable
 
 data Exp = Var Name
-          | Const Name
-          | App Exp Exp
-          | Lambda Name (Maybe Exp) Exp
-          | Imply Exp Exp
-          | Forall Name Exp
-          | Case Exp (Maybe Exp) [(Exp, Exp, Exp)]
-          | Let [(Name, Exp)] Exp
-          deriving (Show, Eq, Ord)
+         | Star
+         | Const Name
+         | App Exp Exp
+         | Lambda Name (Maybe Exp) Exp
+         | Imply Exp Exp
+         | Forall Name Exp
+         | Case Exp (Maybe Exp) [(Exp, Exp)]
+         | Let [(Name, Exp)] Exp
+         deriving (Show, Eq, Ord)
 
-data Kind = Star
-          | KVar Name
-          | KArrow Kind Kind
-          deriving (Show, Eq)
 
 -- nameless for the type
 data Nameless = V Int
@@ -37,7 +34,7 @@ data Nameless = V Int
               | LAM Nameless
              deriving (Show, Eq)
 
-data DataDecl = DataDecl Name Kind [(Exp, Exp)]
+data DataDecl = DataDecl Name Exp [(Exp, Exp)]
                 deriving (Show)
 
 data Module = Mod {funs :: [(Name, Exp, Exp)],
