@@ -142,7 +142,7 @@ caseExp = do
   return $ Case e Nothing alts
 
 pat = do
-  n <- con
+  n <- try con <|> parens pat
   as <- patArgs
   if null as then return n
     else return $ foldl' (\ z x -> App z x) n as 
