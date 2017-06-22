@@ -15,17 +15,19 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Syntax, Parser
+  exposed-modules:     Syntax, Parser, Pretty
   build-depends:       base >= 4.7 && < 5,
                        parsec >= 3.1.11, indents >= 0.4.0.0, containers >= 0.5.7.1,
-                       mtl >= 2.2.1
+                       mtl >= 2.2.1, pretty >= 1.1.3.3
   default-language:    Haskell2010
 
 executable higher-rank-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base,
+  build-depends:       base >= 4.7 && < 5,
+                       parsec >= 3.1.11, indents >= 0.4.0.0, containers >= 0.5.7.1,
+                       mtl >= 2.2.1, pretty >= 1.1.3.3,
                        higher-rank
   default-language:    Haskell2010
 

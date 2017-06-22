@@ -34,13 +34,14 @@ data Nameless = V Int
               | LAM Nameless
              deriving (Show, Eq)
 
-data DataDecl = DataDecl Name Exp [(Exp, Exp)]
-                deriving (Show)
+data Decl = DataDecl Exp Exp [(Exp, Exp)]
+          | FunDecl Exp Exp [([Exp], Exp)]
+          deriving (Show)
 
-data Module = Mod {funs :: [(Name, Exp, Exp)],
-                   datas :: [DataDecl],
-                   annFuns ::[(Name, Exp, Exp)]}
-            deriving (Show)
+-- data Module = Mod {funs :: ,
+--                    datas :: [DataDecl],
+--                    annFuns ::[(Name, Exp, Exp)]}
+--             deriving (Show)
 
 
 {-

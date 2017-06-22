@@ -19,13 +19,13 @@ import Data.Typeable
 import Data.Char
 import Data.List
 
--- parseModule :: String -> String -> Either P.ParseError Module
--- parseModule srcName cnts = 
---  runIndent $ runParserT gModule () srcName cnts
+parseModule :: String -> String -> Either P.ParseError [Decl]
+parseModule srcName cnts = 
+ runIndent $ runParserT decl () srcName cnts
 
 
-parseExp :: String -> Either P.ParseError Exp
-parseExp s = runIndent $ runParserT (try (parens term) <|> term) () [] s
+-- parseExp :: String -> Either P.ParseError Exp
+-- parseExp s = runIndent $ runParserT (try (parens term) <|> term) () [] s
 
 -- parseExps :: String -> Either P.ParseError [Exp]
 -- parseExps s = runIndent [] $ runParserT (many1 (try (parens term) <|> term)) () [] s
@@ -36,37 +36,41 @@ type Parser a = IndentParser String () a
 -- instance Exception P.ParseError 
 
 -- parse module
--- gModule :: Parser Module
--- gModule = do
---   bs <- many (try ruleDecl)
---   ds <- many (try decl)
---   eof
---   return $ Mod bs qs ds sts
+decl :: Parser [Decl]
+decl = do
+  reserved "module"
+  name <- identifier
+  reserved "where"
+  bs <- many $ try dataDecl <|> try funDecl
+  eof
+  return $ bs
 
 
-dataDecl :: Parser DataDecl
+dataDecl :: Parser Decl
 dataDecl = do
   reserved "data"
-  n <- identifier
-  when (isLower (head n)) $ parserFail "expected data type to begin with uppercase letter"
+  n <- con
   reservedOp "::"
   k <- ty
   reserved "where"
   ls <- block $ do{c <- con; reservedOp "::"; t <- ty; return (c, t)}
   return $ DataDecl n k ls
   
-    
-funDecl :: Parser (Exp, Exp, Exp)
+-- (fun-name, [([pats], e)])    
+funDecl :: Parser Decl
 funDecl = do
   v <- var
   reservedOp "::"
   t <- ty
-  v' <- var
-  when (v /= v') $ parserFail ("expected to function to have name " ++ show (v))
-  ps <- many pat
-  reservedOp "="
-  p <- term
-  return (v, t, p)
+  ls <- block $
+        do{ v' <- var;
+            when (v /= v') $ parserFail ("expected to function to have name " ++ show (v));
+            ps <- many pat;
+            reservedOp "=";
+            p <- term;
+            return (ps, p)
+          }
+  return $ FunDecl v t ls
   
 var :: Parser Exp
 var = do
@@ -117,7 +121,7 @@ term = try lambda <|> try compound <|> try caseExp <|> parens term
 lambda = do
   reservedOp "\\"
   as <- many1 var
-  reservedOp "."
+  reservedOp "->"
   p <- term
   return $ foldr (\ x y -> Lambda x Nothing y) p (map (\(Var x) -> x) as)
 

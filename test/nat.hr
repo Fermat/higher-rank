@@ -1,0 +1,10 @@
+module Nat where
+
+data Nat :: * where
+  Z :: Nat
+  S :: Nat -> Nat
+
+
+add :: Nat -> Nat -> Nat
+add Z m = m
+add (S n) m = S (add n m)
