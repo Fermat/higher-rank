@@ -27,5 +27,5 @@ main = flip catches handlers $ do
         parseHandler e = print (disp e) >> exitFailure
 
 deriving instance Typeable ParseError
-instance Exception ParseError where
+instance Exception ParseError 
 
