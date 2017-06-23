@@ -146,7 +146,7 @@ caseExp = do
                        return (a, a')}
   return $ Case e Nothing alts
 
-pat = try  var <|> try con <|> parens patComp
+pat = try var <|> try con <|> parens patComp
   -- as <- patArgs
   -- if null as then return n
   --   else return $ foldl' (\ z x -> App z x) n as 
