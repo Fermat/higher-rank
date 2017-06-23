@@ -138,18 +138,20 @@ caseExp = do
   reserved "case"
   e <- term
   reserved "of"
-  alts <- block $ do{a <- pat; reserved "->"; a' <- term; return (a, a')}
+  alts <- block $ do{n <- con; as <- many pat; reserved "->"; a' <- term;
+                     let a = foldl' (\ z x -> App z x) n as in 
+                       return (a, a')}
   return $ Case e Nothing alts
 
-pat = do
-  n <- try con <|> parens pat
-  as <- patArgs
-  if null as then return n
-    else return $ foldl' (\ z x -> App z x) n as 
+pat = try  var <|> try con <|> parens patComp
+  -- as <- patArgs
+  -- if null as then return n
+  --   else return $ foldl' (\ z x -> App z x) n as 
 
-patArgs =
-  many $ indented >> (try con <|> try var <|> try (parens pat))
-
+patComp = do
+  n <- con
+  ps <- many pat
+  return $ foldl' (\ z x -> App z x) n ps
 
 
 
