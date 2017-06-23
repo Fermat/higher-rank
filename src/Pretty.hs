@@ -72,7 +72,7 @@ instance Disp Exp where
                      Just k' ->
                        nest 2 $ text "(" <> text x <+> text ":"
                        <+> disp k' <> text ")") vars
-    in sep [text "\\" <+> sep ds <+> text ".", nest 4 $ disp b]
+    in sep [text "\\" <+> sep ds <+> text "->", nest 4 $ disp b]
 
 
   disp (a@(Forall x f)) =
