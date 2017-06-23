@@ -17,11 +17,11 @@ data Exp = Var Name
          | Star
          | Const Name
          | App Exp Exp
-         | Lambda Name (Maybe Exp) Exp
+         | Lambda Exp (Maybe Exp) Exp
          | Imply Exp Exp
          | Forall Name Exp
          | Case Exp (Maybe Exp) [(Exp, Exp)]
-         | Let [(Name, Exp)] Exp
+         | Let [(Exp, Exp)] Exp
          deriving (Show, Eq, Ord)
 
 

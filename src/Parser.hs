@@ -104,11 +104,12 @@ typeOpTable = [[binOp AssocRight "->" Imply]]
 
 atomType = do
   n <- try star <|> try var <|> try con <|> parens atomType
+  same
   as <- args
   return $ foldl' (\ z x -> App z x) n as 
 
 args =
-  many $ indented >> (try con <|> try var <|> try (parens atomType))
+  many $ (try con <|> try var <|> try (parens atomType))
 
 forall = do
   reserved "forall"
@@ -123,10 +124,10 @@ term = try lambda <|> try compound <|> try caseExp <|> parens term
 
 lambda = do
   reservedOp "\\"
-  as <- many1 var
+  as <- many1 pat
   reservedOp "->"
   p <- term
-  return $ foldr (\ x y -> Lambda x Nothing y) p (map (\(Var x) -> x) as)
+  return $ foldr (\ x y -> Lambda x Nothing y) p as -- (map (\(Var x) -> x) as)
 
 compound = do
   n <- try var <|> try con <|> parens term 
@@ -145,6 +146,17 @@ caseExp = do
                      let a = foldl' (\ z x -> App z x) n as in 
                        return (a, a')}
   return $ Case e Nothing alts
+
+-- letExp = do
+--   reserved "let"
+--   defs <- manyTill def (reserved "in")
+  
+--   where def = do
+--           p <- pat
+--           reservedOp "="
+--           t <- term
+--           return (p, t)
+  
 
 pat = try var <|> try con <|> parens patComp
   -- as <- patArgs

@@ -1,7 +1,6 @@
 module Nat where
 
 
-
 add :: Nat -> Nat -> Nat
 add Z m = m
 add (S n) m = S (add n m)
@@ -13,8 +12,8 @@ app l1 l2 = case l1 of
 
 
 data List :: * -> * where
-  Nil :: forall a . List a
-  Cons :: forall a . a -> List a -> List a
+ Nil :: forall a . List a
+Cons :: forall a . a -> List a -> List a
 
 id :: forall a . a -> a
 id = \ x -> x
@@ -22,3 +21,9 @@ id = \ x -> x
 data Nat :: * where
   Z :: Nat
   S :: Nat -> Nat
+
+test1 :: forall a . a
+test1 = \ (S n) -> n
+
+test2 :: forall a . a
+test2 = let x = add Z Z in x
