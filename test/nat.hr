@@ -1,19 +1,24 @@
 module Nat where
 
-data Nat :: * where
-  Z :: Nat
-  S :: Nat -> Nat
 
 
 add :: Nat -> Nat -> Nat
 add Z m = m
 add (S n) m = S (add n m)
 
-data List :: * -> * where
-  Nil :: forall a . List a
-  Cons :: forall a . a -> List a -> List a
-
 app :: forall a . List a -> List a -> List a
 app l1 l2 = case l1 of
               Nil -> l2
               Cons x xs -> Cons x (app xs l2)
+
+
+data List :: * -> * where
+  Nil :: forall a . List a
+  Cons :: forall a . a -> List a -> List a
+
+id :: forall a . a -> a
+id = \ x -> x
+
+data Nat :: * where
+  Z :: Nat
+  S :: Nat -> Nat

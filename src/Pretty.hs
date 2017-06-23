@@ -86,8 +86,13 @@ instance Disp Exp where
         text "->",
         nest 2 $ dParen (precedence a - 1) t2]
 
+  disp (a@(Case e _ alts)) =
+    text "case" <+> disp e <+> text "of" $$ nest 2 (vcat (map dAlt alts))
+    where dAlt (p, e) =fsep [disp p <+> text "->", nest 2 $ disp e]
+            
   precedence (Imply _ _) = 4
   precedence (Var _) = 12
+  precedence (Star) = 12
   precedence (Const _) = 12
   precedence (App _ _) = 10
   precedence _ = 0
@@ -97,17 +102,18 @@ instance Disp [(Exp, Exp)] where
   disp decl = vcat (map (\ (n, exp) -> disp n <+> text "::" <+> disp exp) decl)
 
 instance Disp ([Exp], Exp) where
-  disp (pats, e) = (sep $ map disp pats) <+> text "=" <+> disp e
-
+  disp (pats, e) = (sep $ map helper pats) <+> text "=" <+> disp e
+    where helper a@(App _ _ ) = parens $ disp a
+          helper a = disp a
 
 instance Disp Decl where
   disp (DataDecl n k cons) =
     text "data" <+> disp n <+> text "::" <+> disp k <+> text "where" $$
-    nest 2 (disp cons)
+    nest 2 (disp cons) <+> text "\n"
 
   disp (FunDecl f t defs) =
     disp f <+> text "::" <+> disp t $$
-    (vcat $ map (\ x -> disp f <+> disp x) defs)
+    (vcat $ map (\ x -> disp f <+> disp x) defs) <+> text "\n"
 
 instance Disp [Decl] where
   disp ls = vcat $ map disp ls

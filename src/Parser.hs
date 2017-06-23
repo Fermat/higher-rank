@@ -53,6 +53,7 @@ dataDecl = do
   reservedOp "::"
   k <- ty
   reserved "where"
+  indented
   ls <- block $ do{c <- con; reservedOp "::"; t <- ty; return (c, t)}
   return $ DataDecl n k ls
   
@@ -62,16 +63,19 @@ funDecl = do
   v <- var
   reservedOp "::"
   t <- ty
-  ls <- block $
-        do{ v' <- var;
-            when (v /= v') $ parserFail ("expected to function to have name " ++ show (v));
-            ps <- many pat;
-            reservedOp "=";
-            p <- term;
-            return (ps, p)
-          }
+  ls <- manyTill eq (lookAhead (reserved "data") <|> (isNotVar v) <|> try eof)
   return $ FunDecl v t ls
-  
+    where eq = do
+            var
+            ps <- many pat
+            reservedOp "="
+            p <- term
+            return (ps, p)
+          isNotVar v = do
+            v' <- lookAhead $ try var
+            when (v' == v) $ parserFail "from funDecl"
+
+            
 var :: Parser Exp
 var = do
   n <- identifier
@@ -101,8 +105,7 @@ typeOpTable = [[binOp AssocRight "->" Imply]]
 atomType = do
   n <- try star <|> try var <|> try con <|> parens atomType
   as <- args
-  if null as then return n
-    else return $ foldl' (\ z x -> App z x) n as 
+  return $ foldl' (\ z x -> App z x) n as 
 
 args =
   many $ indented >> (try con <|> try var <|> try (parens atomType))
@@ -127,9 +130,8 @@ lambda = do
 
 compound = do
   n <- try var <|> try con <|> parens term 
-  as <- compoundArgs
-  if null as then return n
-    else return $ foldl' (\ z x -> App z x) n as 
+  as <- try $ compoundArgs
+  return $ foldl' (\ z x -> App z x) n as 
 
 compoundArgs =
   many $ indented >> (try con <|> try var <|> try (parens term))
@@ -138,6 +140,7 @@ caseExp = do
   reserved "case"
   e <- term
   reserved "of"
+  indented
   alts <- block $ do{n <- con; as <- many pat; reserved "->"; a' <- term;
                      let a = foldl' (\ z x -> App z x) n as in 
                        return (a, a')}
