@@ -41,7 +41,7 @@ decl = do
   reserved "module"
   name <- identifier
   reserved "where"
-  bs <- many $ try dataDecl <|> try funDecl
+  bs <- many $ try dataDecl <|> funDecl
   eof
   return $ bs
 
@@ -96,7 +96,7 @@ ty :: Parser Exp
 ty = buildExpressionParser typeOpTable bType
 
 bType :: Parser Exp
-bType = try atomType <|> try forall <|> parens ty
+bType = try forall <|> try atomType <|> parens ty
 
 binOp assoc op f = Infix (reservedOp op >> return f) assoc
 
@@ -104,12 +104,10 @@ typeOpTable = [[binOp AssocRight "->" Imply]]
 
 atomType = do
   n <- try star <|> try var <|> try con <|> parens atomType
-  same
-  as <- args
+  as <- many $ indented >> arg
   return $ foldl' (\ z x -> App z x) n as 
 
-args =
-  many $ (try con <|> try var <|> try (parens atomType))
+arg =  (try con <|> try var <|> try (parens atomType))
 
 forall = do
   reserved "forall"
