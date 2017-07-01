@@ -118,7 +118,7 @@ forall = do
 
 -- parse term
 term :: Parser Exp
-term = try lambda <|> try compound <|> try caseExp <|> parens term
+term = try lambda <|> try compound <|> try caseExp <|> try letExp <|> parens term 
 
 lambda = do
   reservedOp "\\"
@@ -145,15 +145,17 @@ caseExp = do
                        return (a, a')}
   return $ Case e Nothing alts
 
--- letExp = do
---   reserved "let"
---   defs <- manyTill def (reserved "in")
-  
---   where def = do
---           p <- pat
---           reservedOp "="
---           t <- term
---           return (p, t)
+letExp = do
+  reserved "let"
+  defs <- block def
+  reserved "in"
+  e <- term
+  return $ Let defs e
+  where def = do
+          p <- pat
+          reservedOp "="
+          t <- term
+          return (p, t)
   
 
 pat = try var <|> try con <|> parens patComp

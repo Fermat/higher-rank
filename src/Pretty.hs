@@ -91,7 +91,10 @@ instance Disp Exp where
   disp (a@(Case e _ alts)) =
     text "case" <+> disp e <+> text "of" $$ nest 2 (vcat (map dAlt alts))
     where dAlt (p, e) =fsep [disp p <+> text "->", nest 2 $ disp e]
-            
+
+  disp (a@(Let ds e)) =
+    text "let" <+> helper ds <+> text "in" $$ nest 2 (disp e)
+    where helper ds = vcat (map (\ (n, exp) -> disp n <+> text "=" <+> disp exp) ds)
   precedence (Imply _ _) = 4
   precedence (Var _) = 12
   precedence (Star) = 12

@@ -16,16 +16,18 @@ app l1 l2 = case l1 of
                 
 --    Cons :: forall a . a -> List a -> List a
 
--- id :: forall a . a -> a
--- id = \ x -> x
+id :: forall a . a -> a
+id = \ x -> x
 
 data Nat :: * where
   S :: Nat -> Nat 
   Z :: Nat
                   
 
--- test1 :: forall a . a
--- test1 = \ (S n) -> n
+test1 :: forall a . a
+test1 = \ (S n) -> n
 
--- test2 :: forall a . a
--- test2 = let x = add Z Z in x
+test2 :: forall a . a
+test2 = let x = add Z Z 
+            (S n) = add o p
+        in x
