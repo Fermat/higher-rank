@@ -33,17 +33,47 @@ apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply s f2)
 
   
-newtype MatchMonad a = MatchMonad {runM :: StateT MatchState (Except Doc) a }
-                     deriving (Functor, Applicative, Monad,
-                                MonadState MatchState, MonadError Doc)
+type MatchMonad a = State MatchState a 
+                     -- deriving (Functor, Applicative, Monad,
+                     --            MonadState MatchState, MonadError Doc)
 
-runMatchMonad :: MatchState -> MatchMonad a -> Either Doc (a, MatchState)
-runMatchMonad s a = runExcept $ runStateT (runM a) s
+-- runMatchMonad :: MatchState -> MatchMonad a -> Either Doc (a, MatchState)
+-- runMatchMonad s a = runExcept $ runStateT (runM a) s
 
 
-initMatchState = MatchState [] 0
+initMatchState = MatchState [[]] 0
 
--- match :: Exp -> Exp -> MatchMonad ()
--- match (Var x) e = if x `elem` freeVars e then
---                     throwError $ text "variable" <+> text x <+> text "in" <+> disp e
---                   else do 
+match :: Exp -> Exp -> [Subst]
+match (Var x) e = if x `elem` freeVars e then
+                    fail "occur check failures"
+                  else return [(x, e)]
+
+
+match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
+                                       s' <- match (apply s a2) (apply s b2)
+                                       return $ extend s' s
+
+match (Forall x e) (Forall y e') = let e1 = apply [(x, Const x)] e
+                                       e2 = apply [(y, Const x)] e' in
+                                     do s <- match e1 e2
+                                        if or $ map (elem x . eigenVar . snd) s
+                                          then fail "eigen variable condition for forall"
+                                          else return s
+
+match (Const x) (Const y) = if x == y then return [] else fail "constructor mismatch"
+
+match e (Var x) = if x `elem` freeVars e then
+                    fail "occur check failures"
+                  else return [(x, e)]
+
+match e1 e2 | (Const x):xs <- flatten e1, (Const y):ys <- flatten e2 =
+       if x == y && (length xs == length ys)
+       then do
+         bs <- mapM (\ (x, y) -> match x y) (zip xs ys)
+         let comps = compL bs
+             res = concat $ map mergeL comps
+         return res
+      else return []
+
+                                        
+  

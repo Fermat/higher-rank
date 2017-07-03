@@ -58,34 +58,23 @@ freeVar (Lambda p Nothing f) =
   freeVar f `S.difference` freeVar p 
 freeVar (Imply b h) = freeVar b `S.union` freeVar h
 
-{-
-free' = S.toList . freeVar'
--- freeVar :: Exp -> [Name]
-freeVar' (Var x) =  S.insert x S.empty
-freeVar' (Const x) = if isLower (head x) then S.insert x S.empty else S.empty
-freeVar' (Arrow f1 f2) = (freeVar' f1) `S.union` (freeVar' f2)
-freeVar' (App f1 f2) = (freeVar' f1) `S.union` (freeVar' f2)
-freeVar' (TApp f1 f2) = (freeVar' f1) `S.union` (freeVar' f2)
-freeVar' (PApp f1 f2) = (freeVar' f1) `S.union` (freeVar' f2)
-freeVar' (Forall x f) = S.delete x (freeVar' f)
-freeVar' (Lambda x (Just f1) f) =
-  S.delete x $ freeVar' f `S.union` freeVar' f1
-freeVar' (Lambda x Nothing f) =
-  S.delete x $ freeVar' f   
-freeVar' (Abs x f) = S.delete x (freeVar' f)
-freeVar' (Imply b h) = freeVar' b `S.union` freeVar' h
 
-freeKVar :: Kind -> S.Set Name
-freeKVar Star = S.empty
-freeKVar (KVar x) = S.insert x S.empty
-freeKVar (KArrow f1 f2) = (freeKVar f1) `S.union` (freeKVar f2)
+eigenVar = S.toList . eigen
+
+eigen (Var x) =  S.insert x S.empty
+eigen (Const x) = if isLower (head x) then S.insert x S.empty else S.empty
+eigen (App f1 f2) = (eigen f1) `S.union` (eigen f2)
+eigen (Forall x f) = S.delete x (eigen f)
+eigen (Imply b h) = eigen b `S.union` eigen h
+eigen (Lambda p (Just f1) f) = eigen f 
+eigen (Lambda p Nothing f) = eigen f 
 
 -- flatten of type
 flatten :: Exp -> [Exp]
-flatten (PApp f1 f2) = flatten f1 ++ [f2]
 flatten (App f1 f2) = flatten f1 ++ [f2]
-flatten (TApp f1 f2) = flatten f1 ++ [f2]
 flatten a = [a]
+
+{-
 getHead a = head $ flatten a
 getArgs a = tail $ flatten a
 reApp (y:ys) = foldl (\ z x -> App z x) y ys
