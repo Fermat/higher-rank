@@ -2,10 +2,11 @@
 module Matching where
 import Syntax
 import Pretty
+
 import Text.PrettyPrint
 import Control.Monad.State.Lazy
 import Control.Monad.Except
-
+import Data.List
 -- substitution
 type Subst = [(String, Exp)]
 
@@ -33,17 +34,17 @@ apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply s f2)
 
   
-type MatchMonad a = State MatchState a 
-                     -- deriving (Functor, Applicative, Monad,
-                     --            MonadState MatchState, MonadError Doc)
+newtype MatchMonad a = MatchMonad {runM :: StateT Int [] a }
+                     deriving (Functor, Applicative, Monad, MonadState Int)
+                               
 
 -- runMatchMonad :: MatchState -> MatchMonad a -> Either Doc (a, MatchState)
 -- runMatchMonad s a = runExcept $ runStateT (runM a) s
 
 
-initMatchState = MatchState [[]] 0
+-- initMatchState = MatchState [[]] 0
 
-match :: Exp -> Exp -> [Subst]
+match :: Exp -> Exp -> MatchMonad Subst
 match (Var x) e = if x `elem` freeVars e then
                     fail "occur check failures"
                   else return [(x, e)]
@@ -71,12 +72,53 @@ match e1 e2 | (Const x):xs <- flatten e1,
               x == y,
               length xs == length ys =
                 foldM (\ x (a, b) -> match (apply x a) (apply x b)) [] (zip xs ys)
-                  
+
+match e1 e2 | (Var x):xs <- flatten e1,
+              (Var y):ys <- flatten e2,
+              x == y,
+              length xs == length ys =
+                foldM (\ x (a, b) -> match (apply x a) (apply x b)) [] (zip xs ys)
+                
 
 match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
-              (Var x) /= y  = 
+              (Var x) /= y  =
+              do
+                let argL = length xs
+                    argL' = length ys
+                    prjs = genProj argL
+                imi <- genImitation y argL argL'
+                let renew = normalize $ apply [(x, imi)] e1
+                    pis = map (\ (a, b) -> (normalize $ apply [(x, a)] b, e2)) (zip prjs xs)
+                    imiAndProj = (renew, e2) : pis
+                    oldsubst = [(x, imi)]: map (\ y -> [(x,y)]) prjs
+                bs <- mapM (\ (a, b) -> match a b) imiAndProj
+--                let cs = map (\ b -> (map (\ (s,a) -> s++a)) (zip oldsubst b)) bs
+                return $ concat bs
+
+              
 
 
+genProj :: Int -> [Exp]
+genProj l = if l == 0 then []
+            else let vars = map (\ y -> "x"++ show y ++ "'") $ take l [1..]
+                     ts = map (\ z ->
+                                  foldr (\ x y -> Lambda (Var x) Nothing y) (Var z) vars) vars
+                 in ts
 
+genImitation :: Exp -> Int -> Int -> MatchMonad Exp
+genImitation head arity arity' = 
+  do n <- get
+     let
+       l = take arity' [n..]
+       lb = take arity [1..]
+       n' = n + arity'
+       fvars = map (\ x -> "h" ++ show x ++ "'") l
+       bvars = map (\ x -> "m" ++ show x ++ "'") lb
+       bvars' = map Var bvars
+       args = map (\ c -> (foldl' (\ z x -> App z x) (Var c) bvars')) fvars
+       body = foldl' (\ z x -> App z x) head args
+       res = foldr (\ x y -> Lambda (Var x) Nothing y) body bvars
+     put n'
+     return res
                                         
   

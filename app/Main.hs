@@ -3,7 +3,9 @@ module Main where
 import Parser
 import Syntax
 import Pretty
+import Matching
 
+import Control.Monad.State.Lazy
 import Data.Typeable
 import Text.Parsec(ParseError)
 import Control.Exception
