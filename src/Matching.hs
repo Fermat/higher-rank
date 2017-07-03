@@ -66,14 +66,17 @@ match e (Var x) = if x `elem` freeVars e then
                     fail "occur check failures"
                   else return [(x, e)]
 
-match e1 e2 | (Const x):xs <- flatten e1, (Const y):ys <- flatten e2 =
-       if x == y && (length xs == length ys)
-       then do
-         bs <- mapM (\ (x, y) -> match x y) (zip xs ys)
-         let comps = compL bs
-             res = concat $ map mergeL comps
-         return res
-      else return []
+match e1 e2 | (Const x):xs <- flatten e1,
+              (Const y):ys <- flatten e2,
+              x == y,
+              length xs == length ys =
+                foldM (\ x (a, b) -> match (apply x a) (apply x b)) [] (zip xs ys)
+                  
+
+match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
+              (Var x) /= y  = 
+
+
 
                                         
   
