@@ -71,13 +71,17 @@ match e1 e2 | (Const x):xs <- flatten e1,
               (Const y):ys <- flatten e2,
               x == y,
               length xs == length ys =
-                foldM (\ x (a, b) -> match (apply x a) (apply x b)) [] (zip xs ys)
+                foldM (\ x (a, b) ->
+                         do{s <- match (apply x a) (apply x b); return $ extend s x})
+                [] (zip xs ys)
 
 match e1 e2 | (Var x):xs <- flatten e1,
               (Var y):ys <- flatten e2,
               x == y,
               length xs == length ys =
-                foldM (\ x (a, b) -> match (apply x a) (apply x b)) [] (zip xs ys)
+                foldM (\ x (a, b) ->
+                         do{s <- match (apply x a) (apply x b); return $ extend s x})
+                [] (zip xs ys)
                 
 
 match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
@@ -91,9 +95,15 @@ match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
                     pis = map (\ (a, b) -> (normalize $ apply [(x, a)] b, e2)) (zip prjs xs)
                     imiAndProj = (renew, e2) : pis
                     oldsubst = [(x, imi)]: map (\ y -> [(x,y)]) prjs
-                bs <- mapM (\ (a, b) -> match a b) imiAndProj
---                let cs = map (\ b -> (map (\ (s,a) -> s++a)) (zip oldsubst b)) bs
-                return $ concat bs
+                bs <- sequence $ concat $
+                      mapM (\ (a, b) -> map (\ u -> do{s <- match a b; return $ extend s u})
+                                        oldsubst)
+                      imiAndProj
+                bs
+                      
+                
+                      
+               
 
               
 
