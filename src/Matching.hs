@@ -34,8 +34,8 @@ apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply s f2)
 
   
-newtype MatchMonad a = MatchMonad {runM :: StateT Int [] a }
-                     deriving (Functor, Applicative, Monad, MonadState Int)
+type MatchMonad a = StateT Int [] a --MatchMonad {runM ::  }
+                     -- deriving (Functor, Applicative, Monad, MonadState Int)
                                
 
 -- runMatchMonad :: MatchState -> MatchMonad a -> Either Doc (a, MatchState)
@@ -95,11 +95,9 @@ match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
                     pis = map (\ (a, b) -> (normalize $ apply [(x, a)] b, e2)) (zip prjs xs)
                     imiAndProj = (renew, e2) : pis
                     oldsubst = [(x, imi)]: map (\ y -> [(x,y)]) prjs
-                bs <- sequence $ concat $
-                      mapM (\ (a, b) -> map (\ u -> do{s <- match a b; return $ extend s u})
-                                        oldsubst)
-                      imiAndProj
-                bs
+                bs <- mapM (\ ((a, b), u) -> do{s <- match a b; return $ extend s u})
+                      (zip imiAndProj oldsubst)
+                lift bs
                       
                 
                       
