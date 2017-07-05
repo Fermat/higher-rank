@@ -12,13 +12,15 @@ spec = do
     it "can work as first order unification " $ do
       runMatch exp1 exp2 `shouldBe` [[("y", exp1)]]
       runMatch exp2 exp1 `shouldBe` [[("y", exp1)]]
-      runMatch (Var "x") exp1 `shouldBe` []
-      runMatch (Var "x") (Var "x") `shouldBe` [[]]
+      runMatch (Var "x") exp1 `shouldBe` [[]]
+      runMatch (Var "x") (Var "x") `shouldBe` [[("x", Var "x")]]
       apply sub1 exp3 == apply sub1 exp4 `shouldBe` True
       apply sub2 exp3 == apply sub2 exp4 `shouldBe` True
       runMatch exp5 exp6 `shouldBe` [[]]
-      runMatch exp5 exp7 `shouldBe` []
+      runMatch exp5 exp7 `shouldBe` [[]]
 
+--    it "can work as second order matching " $ do
+      
 
 exp1 = App (Var "x") (Const "C")
 exp2 = Var "y"
@@ -40,3 +42,7 @@ exp5 = Forall "x" (Imply (Var "x") (Var "x"))
 exp6 = Forall "y" (Imply (Var "y") (Var "y"))
 
 exp7 = Forall "y" (Imply (Var "z") (Var "z"))
+
+exp8 = App (App (Var "d") (Const "Z")) (Const "Z")
+exp9 = App (App (Const "D") (Const "Z")) (App (Const "S") (Const "Z"))
+sub3 = disp $ concat $ runMatch exp8 exp9

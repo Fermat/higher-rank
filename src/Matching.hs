@@ -21,7 +21,8 @@ import Data.List
 -- to be fresh variables.
 
 
-  
+-- list of success pattern, [] indicates failure, identity sub is x --> x.
+
 type MatchMonad a = StateT Int [] a --MatchMonad {runM ::  }
                      -- deriving (Functor, Applicative, Monad, MonadState Int)
                                
@@ -34,9 +35,9 @@ runMatch e1 e2 = evalStateT (match e1 e2) 0
 
 match :: Exp -> Exp -> MatchMonad Subst
 
-match (Var x) e | (Var x) == e = return []
-                | x `elem` freeVars e = 
-                  fail "occur check failures"
+match (Var x) e | (Var x) == e = return [(x, e)]
+                | x `elem` freeVars e = return []
+                  -- fail "occur check failures"
                 | otherwise = return [(x, e)]
 
 match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
@@ -47,14 +48,14 @@ match (Forall x e) (Forall y e') = let e1 = apply [(x, Const x)] e
                                        e2 = apply [(y, Const x)] e' in
                                      do s <- match e1 e2
                                         if or $ map (elem x . eigenVar . snd) s
-                                          then fail "eigen variable condition for forall"
+                                          then return [] -- fail "eigen variable condition for forall"
                                           else return s
 
-match (Const x) (Const y) = if x == y then return [] else fail "constructor mismatch"
+-- match (Const x) (Const y) = if x == y then return [] else fail "constructor mismatch"
 
-match e (Var x) | (Var x) == e = return []
-                | x `elem` freeVars e = 
-                  fail "occur check failures"
+match e (Var x) | (Var x) == e = return [(x, e)]
+                | x `elem` freeVars e = return []
+                  -- fail "occur check failures"
                 | otherwise = return [(x, e)]
 
 match e1 e2 | (Const x):xs <- flatten e1,
@@ -89,6 +90,7 @@ match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
                       (zip imiAndProj oldsubst)
                 lift bs
 
+match e1 e2 = return [] -- error $ show $ text "unexpected" <+> disp e1 <+> text "and" <+> disp e2
 
 genProj :: Int -> [Exp]
 genProj l = if l == 0 then []

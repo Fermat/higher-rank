@@ -85,7 +85,8 @@ apply s a@(Const _) = a
 apply s (App f1 f2) = App (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply s f2)
-
+apply s (Lambda x t f2) = Lambda x t (apply s f2)
+apply s e = error $ show e
 
 extend :: Subst -> Subst -> Subst
 extend s1 s2 = [(x, apply s1 e) | (x, e) <- s2] ++ s1
