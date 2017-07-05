@@ -74,6 +74,43 @@ flatten :: Exp -> [Exp]
 flatten (App f1 f2) = flatten f1 ++ [f2]
 flatten a = [a]
 
+-- substitution
+type Subst = [(String, Exp)]
+
+apply :: Subst -> Exp -> Exp
+apply s (Var x) = case lookup x s of
+                    Nothing -> Var x
+                    Just t -> t
+apply s a@(Const _) = a
+apply s (App f1 f2) = App (apply s f1) (apply s f2)
+apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
+apply s (Forall x f2) = Forall x (apply s f2)
+
+
+extend :: Subst -> Subst -> Subst
+extend s1 s2 = [(x, apply s1 e) | (x, e) <- s2] ++ s1
+
+
+-- normalize type expresion
+normalize :: Exp -> Exp
+-- normalize r | trace ("normalize " ++ show r) False = undefined
+normalize t = let t1 = norm t
+                  t2 = norm t1
+              in if t1 == t2 then t1 else normalize t2 -- `alphaEq`
+                                                 
+norm (Var a) = Var a
+norm (Const a) = Const a
+norm (Lambda x t' t) = Lambda x t' (norm t)
+norm (App (Lambda (Var x) _ t') t) = apply [(x, t)] t'
+norm (App (Var x) t) = App (Var x) (norm t)
+norm (App (Const x) t) = App (Const x) (norm t)
+norm (App t' t) = 
+  case (App (norm t') (norm t)) of
+    a@(App (Lambda x _ t') t) -> norm a
+    b -> b
+norm (Imply t t') = Imply (norm t) (norm t')
+norm (Forall x t) = Forall x (norm t)
+
 {-
 getHead a = head $ flatten a
 getArgs a = tail $ flatten a
