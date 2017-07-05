@@ -26,8 +26,8 @@ type MatchMonad a = StateT Int [] a --MatchMonad {runM ::  }
                      -- deriving (Functor, Applicative, Monad, MonadState Int)
                                
 
--- runMatchMonad :: MatchState -> MatchMonad a -> Either Doc (a, MatchState)
--- runMatchMonad s a = runExcept $ runStateT (runM a) s
+-- runMatch :: MatchMonad a -> [a]
+runMatch e1 e2 = evalStateT (match e1 e2) 0
 
 
 -- initMatchState = MatchState [[]] 0
