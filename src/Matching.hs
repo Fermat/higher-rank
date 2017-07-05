@@ -33,10 +33,11 @@ runMatch e1 e2 = evalStateT (match e1 e2) 0
 -- initMatchState = MatchState [[]] 0
 
 match :: Exp -> Exp -> MatchMonad Subst
-match (Var x) e = if x `elem` freeVars e then
-                    fail "occur check failures"
-                  else return [(x, e)]
 
+match (Var x) e | (Var x) == e = return []
+                | x `elem` freeVars e = 
+                  fail "occur check failures"
+                | otherwise = return [(x, e)]
 
 match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
                                        s' <- match (apply s a2) (apply s b2)
@@ -51,9 +52,10 @@ match (Forall x e) (Forall y e') = let e1 = apply [(x, Const x)] e
 
 match (Const x) (Const y) = if x == y then return [] else fail "constructor mismatch"
 
-match e (Var x) = if x `elem` freeVars e then
-                    fail "occur check failures"
-                  else return [(x, e)]
+match e (Var x) | (Var x) == e = return []
+                | x `elem` freeVars e = 
+                  fail "occur check failures"
+                | otherwise = return [(x, e)]
 
 match e1 e2 | (Const x):xs <- flatten e1,
               (Const y):ys <- flatten e2,

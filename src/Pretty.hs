@@ -106,6 +106,9 @@ instance Disp Exp where
 instance Disp [(Exp, Exp)] where
   disp decl = vcat (map (\ (n, exp) -> disp n <+> text "::" <+> disp exp) decl)
 
+instance Disp [(String, Exp)] where
+  disp decl = disp $ map (\(x, e) -> (Var x , e)) decl
+
 instance Disp ([Exp], Exp) where
   disp (pats, e) = (sep $ map helper pats) <+> text "=" <+> disp e
     where helper a@(App _ _ ) = parens $ disp a
