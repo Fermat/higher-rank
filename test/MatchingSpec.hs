@@ -46,3 +46,8 @@ exp7 = Forall "y" (Imply (Var "z") (Var "z"))
 exp8 = App (App (Var "d") (Const "Z")) (Const "Z")
 exp9 = App (App (Const "D") (Const "Z")) (App (Const "S") (Const "Z"))
 sub3 = disp $ concat $ runMatch exp8 exp9
+
+exp10 = App (Const "S") (Const "Z")
+exp11 = App (Var "x") (Const "Z")
+sub4 = runMatch exp11 exp10
+
