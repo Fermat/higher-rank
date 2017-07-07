@@ -75,12 +75,12 @@ flatten (App f1 f2) = flatten f1 ++ [f2]
 flatten a = [a]
 
 -- substitution
-type Subst = [(String, Exp)]
+newtype Subst = Subst [(String, Exp)] deriving (Show, Eq)
 
 apply :: Subst -> Exp -> Exp
-apply s (Var x) = case lookup x s of
-                    Nothing -> Var x
-                    Just t -> t
+apply (Subst s) (Var x) = case lookup x s of
+                            Nothing -> Var x
+                            Just t -> t
 apply s a@(Const _) = a
 apply s (App f1 f2) = App (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
@@ -89,7 +89,7 @@ apply s (Lambda x t f2) = Lambda x t (apply s f2)
 apply s e = error $ show e
 
 extend :: Subst -> Subst -> Subst
-extend s1 s2 = [(x, apply s1 e) | (x, e) <- s2] ++ s1
+extend (Subst s1) (Subst s2) = Subst $ [(x, apply (Subst s1) e) | (x, e) <- s2] ++ s1
 
 
 -- normalize type expresion
@@ -102,7 +102,7 @@ normalize t = let t1 = norm t
 norm (Var a) = Var a
 norm (Const a) = Const a
 norm (Lambda x t' t) = Lambda x t' (norm t)
-norm (App (Lambda (Var x) _ t') t) = apply [(x, t)] t'
+norm (App (Lambda (Var x) _ t') t) = apply (Subst [(x, t)]) t'
 norm (App (Var x) t) = App (Var x) (norm t)
 norm (App (Const x) t) = App (Const x) (norm t)
 norm (App t' t) = 

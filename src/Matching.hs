@@ -23,56 +23,68 @@ import Data.List
 
 -- list of success pattern, [] indicates failure, identity sub is x --> x.
 
-type MatchMonad a = StateT Int [] a --MatchMonad {runM ::  }
+--type MatchMonad a = StateT Int [] a --MatchMonad {runM ::  }
                      -- deriving (Functor, Applicative, Monad, MonadState Int)
                                
 
 -- runMatch :: MatchMonad a -> [a]
-runMatch e1 e2 = evalStateT (match e1 e2) 0
+runMatch e1 e2 = evalState (match e1 e2) 0
 
 
 -- initMatchState = MatchState [[]] 0
 
-match :: Exp -> Exp -> MatchMonad Subst
+match :: Exp -> Exp -> State Int [Subst]
 
-match (Var x) e | (Var x) == e = return [(x, e)]
+match (Var x) e | (Var x) == e = return $ [Subst [(x, e)]]
                 | x `elem` freeVars e = return []
-                  -- fail "occur check failures"
-                | otherwise = return [(x, e)]
+--                    fail "occur check failures"
+                | otherwise = return $ [Subst [(x, e)]]
 
 match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
-                                       s' <- match (apply s a2) (apply s b2)
-                                       return $ extend s' s
+                                       s' <- mapM (\ sub -> match (apply sub a2) (apply sub b2))
+                                             s
+                                       let res = [map (\ x -> extend x sub) subs |
+                                                  sub <- s, subs <- s']
+                                       return $ concat res
+                                       -- return $ [extend s' s]
 
-match (Forall x e) (Forall y e') = let e1 = apply [(x, Const x)] e
-                                       e2 = apply [(y, Const x)] e' in
+match (Forall x e) (Forall y e') = let e1 = apply (Subst [(x, Const x)]) e
+                                       e2 = apply (Subst [(y, Const x)]) e' in
                                      do s <- match e1 e2
-                                        if or $ map (elem x . eigenVar . snd) s
-                                          then return [] -- fail "eigen variable condition for forall"
-                                          else return s
+                                        let res = [ ss | ss@(Subst sub) <- s,
+                                                    and $ map ((not . elem x) . eigenVar . snd) sub ]
+                                        return res
+                                          
+                                          -- fail "eigen variable condition for forall"
+                                          -- else return $ Subst s
 
 -- match (Const x) (Const y) = if x == y then return [] else fail "constructor mismatch"
 
-match e (Var x) | (Var x) == e = return [(x, e)]
+match e (Var x) | (Var x) == e = return [Subst [(x, e)]]
                 | x `elem` freeVars e = return []
-                  -- fail "occur check failures"
-                | otherwise = return [(x, e)]
+                    -- fail "occur check failures"
+                | otherwise = return [Subst [(x, e)]]
 
 match e1 e2 | (Const x):xs <- flatten e1,
               (Const y):ys <- flatten e2,
               x == y,
               length xs == length ys =
                 foldM (\ x (a, b) ->
-                         do{s <- match (apply x a) (apply x b); return $ extend s x})
-                [] (zip xs ys)
+                          do{s' <- mapM (\ sub -> match (apply sub a) (apply sub b)) x;
+                             return $ concat [map (\ y -> extend y sub) subs
+                                             | sub <- x, subs <- s']})
+                [Subst []] (zip xs ys)
 
 match e1 e2 | (Var x):xs <- flatten e1,
               (Var y):ys <- flatten e2,
               x == y,
               length xs == length ys =
                 foldM (\ x (a, b) ->
-                         do{s <- match (apply x a) (apply x b); return $ extend s x})
-                [] (zip xs ys)
+                          do{s' <- mapM (\ sub -> match (apply sub a) (apply sub b)) x;
+                             return $ concat [map (\ y -> extend y sub) subs
+                                             | sub <- x, subs <- s']})
+                [Subst []] (zip xs ys)
+
                 
 
 match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
@@ -82,13 +94,14 @@ match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
                     argL' = length ys
                     prjs = genProj argL
                 imi <- genImitation y argL argL'
-                let renew = normalize $ apply [(x, imi)] e1
-                    pis = map (\ (a, b) -> (normalize $ apply [(x, a)] b, e2)) (zip prjs xs)
+                let renew = normalize $ apply (Subst [(x, imi)]) e1
+                    pis = map (\ (a, b) -> (normalize $ apply (Subst [(x, a)]) b, e2)) (zip prjs xs)
                     imiAndProj = (renew, e2) : pis
                     oldsubst = [(x, imi)]: map (\ y -> [(x,y)]) prjs
-                bs <- mapM (\ ((a, b), u) -> do{s <- match a b; return $ extend s u})
+                bs <- mapM (\ ((a, b), u) -> do{s <- match a b;
+                                                return $ map (\ y -> extend y (Subst u)) s})
                       (zip imiAndProj oldsubst)
-                lift bs
+                return $ concat bs
 
 match e1 e2 = return [] -- error $ show $ text "unexpected" <+> disp e1 <+> text "and" <+> disp e2
 
@@ -99,7 +112,7 @@ genProj l = if l == 0 then []
                                   foldr (\ x y -> Lambda (Var x) Nothing y) (Var z) vars) vars
                  in ts
 
-genImitation :: Exp -> Int -> Int -> MatchMonad Exp
+genImitation :: Exp -> Int -> Int -> State Int Exp
 genImitation head arity arity' = 
   do n <- get
      let
