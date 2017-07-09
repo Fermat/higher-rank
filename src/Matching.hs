@@ -7,7 +7,7 @@ import Text.PrettyPrint
 import Control.Monad.State.Lazy
 import Control.Monad.Except
 import Data.List
-
+import qualified Data.Set as S
 -- -- As we have second-order matching, the state will be a list of
 -- -- all possible success substitutions
 -- data MatchState = MatchState {subst :: [Subst], counter :: Int }
@@ -27,8 +27,17 @@ import Data.List
                      -- deriving (Functor, Applicative, Monad, MonadState Int)
                                
 
--- runMatch :: MatchMonad a -> [a]
-runMatch e1 e2 = evalState (match e1 e2) 0
+-- runMatch run the matching function, and postprocess the results by removing
+-- duplications and unused substitutions for generated variables.
+runMatch e1 e2 = let subs = evalState (match e1 e2) 0
+                     fvs = freeVar e1 `S.union` freeVar e2
+                     subs' = [ s'  | Subst s <- subs,
+                               let s' = [ (x, e) | (x, e) <- s, x `S.member` fvs]]
+                     subs'' = nub $ map S.fromList subs'
+                     subs''' = map (Subst . S.toList) subs'' 
+                             
+  in subs'''
+                   
 
 
 -- initMatchState = MatchState [[]] 0
@@ -86,7 +95,6 @@ match e1 e2 | (Var x):xs <- flatten e1,
                 [Subst []] (zip xs ys)
 
                 
-
 match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
               (Var x) /= y  =
               do
