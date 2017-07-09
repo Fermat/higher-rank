@@ -11,13 +11,13 @@ spec = do
   describe "match" $ do
     it "can work as first order unification " $ do
       runMatch exp1 exp2 `shouldBe` [Subst [("y", exp1)]]
-      -- runMatch exp2 exp1 `shouldBe` [[("y", exp1)]]
-      -- runMatch (Var "x") exp1 `shouldBe` [[]]
-      -- runMatch (Var "x") (Var "x") `shouldBe` [[("x", Var "x")]]
+      runMatch exp2 exp1 `shouldBe` [Subst [("y", exp1)]]
+      runMatch (Var "x") exp1 `shouldBe` []
+      runMatch (Var "x") (Var "x") `shouldBe` [Subst [("x",Var "x")]]
       and [apply s exp3 == apply s exp4 | s <- sub1] `shouldBe` True
       and [apply s exp3 == apply s exp4 | s <- sub2] `shouldBe` True
-      -- runMatch exp5 exp6 `shouldBe` [[]]
-      -- runMatch exp5 exp7 `shouldBe` [[]]
+      runMatch exp5 exp6 `shouldBe` [Subst []]
+      runMatch exp5 exp7 `shouldBe` []
 
 --    it "can work as second order matching " $ do
       
