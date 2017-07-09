@@ -14,8 +14,8 @@ spec = do
       -- runMatch exp2 exp1 `shouldBe` [[("y", exp1)]]
       -- runMatch (Var "x") exp1 `shouldBe` [[]]
       -- runMatch (Var "x") (Var "x") `shouldBe` [[("x", Var "x")]]
-      -- apply sub1 exp3 == apply sub1 exp4 `shouldBe` True
-      -- apply sub2 exp3 == apply sub2 exp4 `shouldBe` True
+      and [apply s exp3 == apply s exp4 | s <- sub1] `shouldBe` True
+      and [apply s exp3 == apply s exp4 | s <- sub2] `shouldBe` True
       -- runMatch exp5 exp6 `shouldBe` [[]]
       -- runMatch exp5 exp7 `shouldBe` [[]]
 
@@ -33,8 +33,8 @@ exp4 = let gy = App (Const "G") (Var "y")
        in
          App (App (Const "H") a2) (Var "z")
 
--- sub1 = concat $ runMatch exp3 exp4
--- sub2 = concat $ runMatch exp4 exp3 
+sub1 = runMatch exp3 exp4
+sub2 = runMatch exp4 exp3 
 -- showTest1 = disp sub1
 
 exp5 = Forall "x" (Imply (Var "x") (Var "x"))
