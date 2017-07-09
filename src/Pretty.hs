@@ -103,11 +103,15 @@ instance Disp Exp where
   precedence _ = 0
 
 
+instance Disp Subst where
+  disp (Subst sub) = disp sub
+  
 instance Disp [(Exp, Exp)] where
-  disp decl = vcat (map (\ (n, exp) -> disp n <+> text "::" <+> disp exp) decl)
+  disp decl =  vcat (map (\ (n, exp) -> disp n <+> text "::" <+> disp exp) decl)
 
 instance Disp [(String, Exp)] where
-  disp decl = disp $ map (\(x, e) -> (Var x , e)) decl
+  disp decl = brackets $ vcat (map (\ (n, exp) -> text n <+> text "|->" <+> disp exp) decl)
+  -- disp $ map (\(x, e) -> (Var x , e)) decl
 
 instance Disp ([Exp], Exp) where
   disp (pats, e) = (sep $ map helper pats) <+> text "=" <+> disp e

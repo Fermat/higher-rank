@@ -89,7 +89,7 @@ apply s (Lambda x t f2) = Lambda x t (apply s f2)
 apply s e = error $ show e
 
 extend :: Subst -> Subst -> Subst
-extend (Subst s1) (Subst s2) = Subst $ [(x, apply (Subst s1) e) | (x, e) <- s2] ++ s1
+extend (Subst s1) (Subst s2) = Subst $ [(x, normalize $ apply (Subst s1) e) | (x, e) <- s2] ++ s1
 
 
 -- normalize type expresion
