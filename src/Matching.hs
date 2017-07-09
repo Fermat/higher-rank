@@ -8,24 +8,12 @@ import Control.Monad.State.Lazy
 import Control.Monad.Except
 import Data.List
 import qualified Data.Set as S
--- -- As we have second-order matching, the state will be a list of
--- -- all possible success substitutions
--- data MatchState = MatchState {subst :: [Subst], counter :: Int }
---                 deriving (Show)
-
--- updateSubst :: Subst -> MatchState -> MatchState
--- updateSubst sub s@(MatchState{subst}) = s{subst = map (extend sub) subst}
-
+-- As we have second-order matching, the state will be a list of
+-- all possible success substitutions
+-- list of success pattern, [] indicates failure, identity sub for free var is x |-> x.
 
 -- fresh assumption: I am assuming the domain of the substitution
 -- to be fresh variables.
-
-
--- list of success pattern, [] indicates failure, identity sub is x --> x.
-
---type MatchMonad a = StateT Int [] a --MatchMonad {runM ::  }
-                     -- deriving (Functor, Applicative, Monad, MonadState Int)
-                               
 
 -- runMatch run the matching function, and postprocess the results by removing
 -- duplications and unused substitutions for generated variables.
@@ -38,15 +26,10 @@ runMatch e1 e2 = let subs = evalState (match e1 e2) 0
                              
   in subs'''
                    
-
-
--- initMatchState = MatchState [[]] 0
-
 match :: Exp -> Exp -> State Int [Subst]
 
 match (Var x) e | (Var x) == e = return $ [Subst [(x, e)]]
                 | x `elem` freeVars e = return []
---                    fail "occur check failures"
                 | otherwise = return $ [Subst [(x, e)]]
 
 match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
@@ -55,7 +38,6 @@ match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
                                        let res = [map (\ x -> extend x sub) subs |
                                                   sub <- s, subs <- s']
                                        return $ concat res
-                                       -- return $ [extend s' s]
 
 match (Forall x e) (Forall y e') = let e1 = apply (Subst [(x, Const x)]) e
                                        e2 = apply (Subst [(y, Const x)]) e' in
@@ -64,14 +46,9 @@ match (Forall x e) (Forall y e') = let e1 = apply (Subst [(x, Const x)]) e
                                                     and $ map ((not . elem x) . eigenVar . snd) sub ]
                                         return res
                                           
-                                          -- fail "eigen variable condition for forall"
-                                          -- else return $ Subst s
-
--- match (Const x) (Const y) = if x == y then return [] else fail "constructor mismatch"
 
 match e (Var x) | (Var x) == e = return [Subst [(x, e)]]
                 | x `elem` freeVars e = return []
-                    -- fail "occur check failures"
                 | otherwise = return [Subst [(x, e)]]
 
 match e1 e2 | (Const x):xs <- flatten e1,
@@ -111,7 +88,7 @@ match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
                       (zip imiAndProj oldsubst)
                 return $ concat bs
 
-match e1 e2 = return [] -- error $ show $ text "unexpected" <+> disp e1 <+> text "and" <+> disp e2
+match e1 e2 = return [] 
 
 genProj :: Int -> [Exp]
 genProj l = if l == 0 then []
