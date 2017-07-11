@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Syntax, Parser, Pretty, Matching, TypeChecker
+  exposed-modules:     Syntax, Parser, Pretty, Matching, TypeChecker, KindChecker
   build-depends:       base >= 4.7 && < 5,
                        parsec >= 3.1.11, indents >= 0.4.0.0, containers >= 0.5.7.1,
                        mtl >= 2.2.1, pretty >= 1.1.3.3

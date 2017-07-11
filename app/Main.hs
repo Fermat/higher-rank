@@ -4,9 +4,9 @@ import Parser
 import Syntax
 import Pretty
 import Matching
-import TypeChecker
+import KindChecker
 
-import Control.Monad.Except
+
 import Text.PrettyPrint
 import Control.Monad.State.Lazy
 import Data.Typeable
@@ -36,22 +36,4 @@ main = flip catches handlers $ do
 
 deriving instance Typeable ParseError
 instance Exception ParseError 
-instance Exception Doc 
-
-kindData :: [Decl] -> KindDef -> IO ()
-kindData a g = do
-  let ds = concat [cons | (DataDecl _ _ cons) <- a]
-      res = mapM (\ (Const x, e) -> runKinding e g `catchError` (\ err -> throwError (err $$ text "in the type of the data constructor" <+> text x))) ds
-  case res  of
-    Left e -> throw e
-    Right ks -> do
-      putStrLn $ "kinding success for datatypes! \n"
-
-kindFunc :: [Decl] -> KindDef -> IO ()
-kindFunc a g = do
-  let ds = [(f, t) | (FunDecl (Var f) t _) <- a]
-  case mapM (\ (x, e) -> (runKinding e g) `catchError` (\ e -> throwError (e $$ text "in the type of the function" <+> text x))) ds of
-    Left e -> throw e
-    Right ks -> do
-      putStrLn $ "kinding success for function's type! \n"
 
