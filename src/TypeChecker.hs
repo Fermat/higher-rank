@@ -7,6 +7,7 @@ import Matching
 import Text.PrettyPrint
 import Control.Monad.State.Lazy
 import Control.Monad.Reader
+import Control.Monad.Except
 import Data.Char
 
 type KindDef = [(Name, Exp)]
@@ -34,10 +35,10 @@ inferKind (Const x) | isUpper (head x) =
                       do genv <- ask
                          case lookup x genv of
                            Just k -> return k
-                           Nothing ->
-                             lift $ lift $ lift $ Left $
-                             text "Kinding error: " <+>
-                             text "undefine type constructor:" <+> disp x
+                           Nothing -> throwError $
+                           -- lift $ lift $ lift $ Left $
+                                      text "Kinding error: " <+>
+                                      text "undefined type constructor:" <+> disp x
 
 inferKind (Var x) = do
   Subst env <- lift get
@@ -49,20 +50,45 @@ inferKind (Var x) = do
       return kind
     Just k -> return k  
 
-inferKind (PApp f1 f2) = do
+inferKind (App f1 f2) = do
   k1 <- inferKind f1
   k2 <- inferKind f2
-  unificationK k2 Star
   k <- makeName "k"
-  unificationK k1 $ KArrow Star (KVar k) 
-  return (KVar k) 
+  case runMatch k1 (Imply k2 (Var k)) of
+    [] -> throwError $ text "Kinding error:" $$ (text "kind mismatch for"
+                                                  <+> disp f1 <+> text "and" <+>
+                                                  disp f2)
+    
+    x:_ -> do
+      Subst env <- lift get
+      let env' = map (\(y, e) -> (y, apply x e)) env
+      lift $ put (Subst env') 
+      return $ apply x (Var k) 
 
-inferKind (Abs x t) = do
-  lift $ modify (\ e -> (x, Star): e)
-  if x `elem` (free t) then
-    do k <- inferKind t
-       let k' = ground k
-       case isTerm k' of
-         True -> return $ KArrow Star k
-         False -> lift $ lift $ lift $ Left $ text "the body " <+> (disp t) <+> text " is ill-kind"
-    else lift $ lift $ lift $ Left $ text "no use of variable " <+> text x
+
+inferKind (Lambda (Var x) _ t) = do
+  lift $ modify (\ (Subst e) -> Subst $ (x, Star): e)
+  k <- inferKind t
+  let k' = grounding k
+  return $ Imply Star k'
+
+inferKind (Forall x f) = do
+  k <- inferKind f
+  let k' = grounding k
+  case k' of
+    Star -> return Star
+    _ -> throwError $ text "Kinding error:" $$ (text "unexpected kind"
+                                                  <+> disp k' <+> text "for" <+>
+                                                  disp f)
+
+inferKind (Imply f1 f2) = do
+  k1 <- inferKind f1
+  k2 <- inferKind f2
+  case (grounding k1, grounding k2) of
+    (Star, Star) -> return Star
+    (a, b) -> throwError $ text "Kinding error:" $$ (text "unexpected kind"
+                                                  <+> disp a <+> text "for" <+>
+                                                  disp f1)
+
+
+
