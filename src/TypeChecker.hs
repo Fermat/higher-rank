@@ -91,4 +91,11 @@ inferKind (Imply f1 f2) = do
                                                   disp f1)
 
 
+runKinding :: Exp -> KindDef -> Either Doc Exp
+runKinding t g = do (k, sub) <- runReaderT (runStateT (evalStateT (inferKind t) 0) (Subst [])) g 
+                    return k
+
+
+
+
 
