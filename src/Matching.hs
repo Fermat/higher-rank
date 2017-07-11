@@ -27,7 +27,7 @@ runMatch e1 e2 = let subs = evalState (match e1 e2) 0
   in subs'''
                    
 match :: Exp -> Exp -> State Int [Subst]
-
+match Star Star = return [Subst []]
 match (Var x) e | (Var x) == e = return $ [Subst [(x, e)]]
                 | x `elem` freeVars e = return []
                 | otherwise = return $ [Subst [(x, e)]]

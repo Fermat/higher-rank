@@ -10,6 +10,7 @@ import Control.Monad.Reader
 import Control.Monad.Except
 import Data.Char
 
+
 type KindDef = [(Name, Exp)]
 
 -- Well-formed kinds
@@ -56,8 +57,8 @@ inferKind (App f1 f2) = do
   k <- makeName "k"
   case runMatch k1 (Imply k2 (Var k)) of
     [] -> throwError $ text "Kinding error:" $$ (text "kind mismatch for"
-                                                  <+> disp f1 <+> text "and" <+>
-                                                  disp f2)
+                                                  <+> disp f1 <+> text "::" <+> disp k1 <+> text "and" <+>
+                                                  disp f2 <+> text "::" <+> disp k2)
     
     x:_ -> do
       Subst env <- lift get
@@ -96,6 +97,7 @@ runKinding t g = do (k, sub) <- runReaderT (runStateT (evalStateT (inferKind t) 
                     return k
 
 
+                
 
 
 

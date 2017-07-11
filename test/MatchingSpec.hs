@@ -51,4 +51,4 @@ sub3' = disp $ nub $ map (\ (Subst x) -> head x) sub3
 exp10 = App (Const "S") (Const "Z")
 exp11 = App (Var "x") (Const "Z")
 sub4 = runMatch exp11 exp10
-
+sub5 = runMatch (Imply Star Star) (Imply Star (Var "x"))

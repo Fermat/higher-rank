@@ -13,9 +13,6 @@ app l1 l2 = case l1 of
               Nil -> l2
               Cons x xs -> Cons x (app xs l2)
 
-                
---    Cons :: forall a . a -> List a -> List a
-
 id :: forall a . a -> a
 id = \ x -> x
 

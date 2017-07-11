@@ -50,6 +50,7 @@ freeVars = S.toList . freeVar
 
 freeVar (Var x) =  S.insert x S.empty
 freeVar (Const x) = S.empty
+freeVar Star = S.empty
 freeVar (App f1 f2) = (freeVar f1) `S.union` (freeVar f2)
 freeVar (Forall x f) = S.delete x (freeVar f)
 freeVar (Lambda p (Just f1) f) =
@@ -86,7 +87,8 @@ apply s (App f1 f2) = App (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply s f2)
 apply s (Lambda x t f2) = Lambda x t (apply s f2)
-apply s e = error $ show e
+apply s Star = Star
+apply s e = error $ show e ++ "from apply"
 
 extend :: Subst -> Subst -> Subst
 extend (Subst s1) (Subst s2) = Subst $ [(x, normalize $ apply (Subst s1) e) | (x, e) <- s2] ++ s1
@@ -98,7 +100,8 @@ normalize :: Exp -> Exp
 normalize t = let t1 = norm t
                   t2 = norm t1
               in if t1 == t2 then t1 else normalize t2 -- `alphaEq`
-                                                 
+
+norm Star = Star
 norm (Var a) = Var a
 norm (Const a) = Const a
 norm (Lambda x t' t) = Lambda x t' (norm t)
