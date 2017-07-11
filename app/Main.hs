@@ -6,6 +6,7 @@ import Pretty
 import Matching
 import TypeChecker
 
+import Control.Monad.Except
 import Text.PrettyPrint
 import Control.Monad.State.Lazy
 import Data.Typeable
@@ -40,7 +41,8 @@ instance Exception Doc
 kindData :: [Decl] -> KindDef -> IO ()
 kindData a g = do
   let ds = concat [cons | (DataDecl _ _ cons) <- a]
-  case mapM (\ (x, e) -> runKinding e g) ds of
+      res = mapM (\ (Const x, e) -> runKinding e g `catchError` (\ err -> throwError (err $$ text "in the type of the data constructor" <+> text x))) ds
+  case res  of
     Left e -> throw e
     Right ks -> do
       putStrLn $ "kinding success for datatypes! \n"
@@ -48,7 +50,7 @@ kindData a g = do
 kindFunc :: [Decl] -> KindDef -> IO ()
 kindFunc a g = do
   let ds = [(f, t) | (FunDecl (Var f) t _) <- a]
-  case mapM (\ (x, e) -> runKinding e g) ds of
+  case mapM (\ (x, e) -> (runKinding e g) `catchError` (\ e -> throwError (e $$ text "in the type of the function" <+> text x))) ds of
     Left e -> throw e
     Right ks -> do
       putStrLn $ "kinding success for function's type! \n"
