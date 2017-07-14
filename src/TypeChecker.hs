@@ -42,6 +42,9 @@ patternVars p i = let fvs = freeVars p
                       vars = map (\ n -> Var $ "y"++show n++"'") ns in
                     (zip fvs vars, j)
 
+makePatEnv :: [Exp] -> Int -> ([TyEnv], Int)
+
+
 transit :: ResState -> [ResState]
 transit (Res ks f pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ _) gamma lvars):phi) Nothing i) =
   let (bs, h) = getHB goal
@@ -53,6 +56,6 @@ transit (Res ks f pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ _) gamma lvars):
                    (text "current program:"<+> disp exp) $$
                    (nest 2 $ text "current mixed proof term" $$ nest 2 (disp pf)) in
           [(Res ks f pf ((Phi pos goal exp gamma lvars):phi) m' i)]
-      else undefined 
+      else let theta = foldr (\ n pat -> patternVars pat i) i vars
   
 
