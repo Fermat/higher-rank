@@ -67,7 +67,7 @@ inferKind (App f1 f2) = do
       return $ apply x (Var k) 
 
 
-inferKind (Lambda (Var x) _ t) = do
+inferKind (Lambda (Var x) t) = do
   lift $ modify (\ (Subst e) -> Subst $ (x, Star): e)
   k <- inferKind t
   let k' = grounding k

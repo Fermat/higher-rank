@@ -94,7 +94,7 @@ genProj :: Int -> [Exp]
 genProj l = if l == 0 then []
             else let vars = map (\ y -> "x"++ show y ++ "'") $ take l [1..]
                      ts = map (\ z ->
-                                  foldr (\ x y -> Lambda (Var x) Nothing y) (Var z) vars) vars
+                                  foldr (\ x y -> Lambda (Var x) y) (Var z) vars) vars
                  in ts
 
 genImitation :: Exp -> Int -> Int -> State Int Exp
@@ -109,7 +109,7 @@ genImitation head arity arity' =
        bvars' = map Var bvars
        args = map (\ c -> (foldl' (\ z x -> App z x) (Var c) bvars')) fvars
        body = foldl' (\ z x -> App z x) head args
-       res = foldr (\ x y -> Lambda (Var x) Nothing y) body bvars
+       res = foldr (\ x y -> Lambda (Var x) y) body bvars
      put n'
      return res
                                         

@@ -125,7 +125,7 @@ lambda = do
   as <- many1 pat
   reservedOp "->"
   p <- term
-  return $ foldr (\ x y -> Lambda x Nothing y) p as -- (map (\(Var x) -> x) as)
+  return $ foldr (\ x y -> Lambda x y) p as -- (map (\(Var x) -> x) as)
 
 compound = do
   n <- try var <|> try con <|> parens term 

@@ -17,11 +17,12 @@ data Exp = Var Name
          | Star
          | Const Name
          | App Exp Exp
-         | Lambda Exp (Maybe Exp) Exp
+         | Lambda Exp Exp
          | Imply Exp Exp
          | Forall Name Exp
          | Case Exp (Maybe Exp) [(Exp, Exp)]
          | Let [(Exp, Exp)] Exp
+         | Ann Exp (Maybe Exp)
          deriving (Show, Eq, Ord)
 
 
@@ -53,12 +54,10 @@ freeVar (Const x) = S.empty
 freeVar Star = S.empty
 freeVar (App f1 f2) = (freeVar f1) `S.union` (freeVar f2)
 freeVar (Forall x f) = S.delete x (freeVar f)
-freeVar (Lambda p (Just f1) f) =
-  (freeVar f `S.union` freeVar f1) `S.difference` freeVar p
-freeVar (Lambda p Nothing f) =
-  freeVar f `S.difference` freeVar p 
+freeVar (Lambda p f) =
+  freeVar f `S.difference` freeVar p
 freeVar (Imply b h) = freeVar b `S.union` freeVar h
-
+freeVar (Ann (Var x) _) = S.insert x S.empty
 
 eigenVar = S.toList . eigen
 
@@ -67,8 +66,8 @@ eigen (Const x) = if isLower (head x) then S.insert x S.empty else S.empty
 eigen (App f1 f2) = (eigen f1) `S.union` (eigen f2)
 eigen (Forall x f) = S.delete x (eigen f)
 eigen (Imply b h) = eigen b `S.union` eigen h
-eigen (Lambda p (Just f1) f) = eigen f 
-eigen (Lambda p Nothing f) = eigen f 
+eigen (Lambda p f) = eigen f 
+
 
 -- flatten of type
 flatten :: Exp -> [Exp]
@@ -86,7 +85,7 @@ apply s a@(Const _) = a
 apply s (App f1 f2) = App (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply s f2)
-apply s (Lambda x t f2) = Lambda x t (apply s f2)
+apply s (Lambda x f2) = Lambda x (apply s f2)
 apply s Star = Star
 apply s e = error $ show e ++ "from apply"
 
@@ -104,13 +103,13 @@ normalize t = let t1 = norm t
 norm Star = Star
 norm (Var a) = Var a
 norm (Const a) = Const a
-norm (Lambda x t' t) = Lambda x t' (norm t)
-norm (App (Lambda (Var x) _ t') t) = apply (Subst [(x, t)]) t'
+norm (Lambda x t) = Lambda x (norm t)
+norm (App (Lambda (Var x) t') t) = apply (Subst [(x, t)]) t'
 norm (App (Var x) t) = App (Var x) (norm t)
 norm (App (Const x) t) = App (Const x) (norm t)
 norm (App t' t) = 
   case (App (norm t') (norm t)) of
-    a@(App (Lambda x _ t') t) -> norm a
+    a@(App (Lambda x t') t) -> norm a
     b -> b
 norm (Imply t t') = Imply (norm t) (norm t')
 norm (Forall x t) = Forall x (norm t)

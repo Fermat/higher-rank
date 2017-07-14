@@ -31,14 +31,14 @@ dParen level x =
    then parens $ disp x 
    else disp x
 
-viewLArgs :: Exp -> [(Exp, Maybe Exp)]
-viewLArgs (Lambda n t a) =
-  (n, t) : viewLArgs a
+viewLArgs :: Exp -> [Exp]
+viewLArgs (Lambda n a) =
+  n : viewLArgs a
 viewLArgs _ = []
 
 
 viewLBody :: Exp -> Exp
-viewLBody (Lambda _ _ a) = viewLBody a
+viewLBody (Lambda _ a) = viewLBody a
 viewLBody x = x
 
 
@@ -59,19 +59,16 @@ instance Disp Exp where
                  | otherwise = brackets $ disp x
   disp Star = text "*"
   disp (Var x) = disp x
+  disp (Ann (Var x) Nothing) = disp x
+  disp (Ann (Var x) (Just t)) = parens $ disp x <+> disp t
   disp (s@(App s1 s2)) =
     sep [dParen (precedence s - 1) s1,  
          nest 2 $ dParen (precedence s) s2]
 
-  disp a@(Lambda x t' t) =
+  disp a@(Lambda x t) =
     let vars = viewLArgs a
         b = viewLBody a
-        ds = map (\ (x, k) ->
-                   case k of
-                     Nothing -> nest 2 $ helper x
-                     Just k' ->
-                       nest 2 $ text "(" <> disp x <+> text ":"
-                       <+> disp k' <> text ")") vars
+        ds = map helper vars 
     in sep [text "\\" <+> sep ds <+> text "->", nest 4 $ disp b]
     where helper a@(App _ _ ) = parens $ disp a
           helper a = disp a
