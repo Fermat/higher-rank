@@ -139,3 +139,11 @@ transit (Res ks gn pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing 
       pf' = replace pf pos newAbs
       pos' = pos ++ take lv stream1
   in [(Res ks gn pf' ((Phi pos' imp' exp gamma (lvars++ absNames)):phi) Nothing (i+lv))]
+
+
+transit (Res ks gn pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
+  case flatten exp of
+    (Var v) : xs -> handle v xs
+    (Const v) : xs -> handle v xs
+    a -> error $ "unhandle situation in transit " ++ show (disp exp)
+  where handle v xs = 
