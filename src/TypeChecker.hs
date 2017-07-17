@@ -52,6 +52,11 @@ makePatEnv (x:xs) i = let (env, j) = patternVars x i
                           (res, n) = makePatEnv xs j in
                         (env:res, n)
 
+-- Postion encoding scheme:
+-- App 0 1
+-- Lambda 0 1
+-- Case 0 1 [(0, 0, 1), (1, 0, 1),... (n, 0, 1)]
+
 replace :: Exp -> Pos -> Exp -> Exp
 replace e [] r = r
 replace (App t1 t2) (x:xs) r | x ==1 = App t1 (replace t2 xs r)
@@ -59,6 +64,18 @@ replace (App t1 t2) (x:xs) r | x ==1 = App t1 (replace t2 xs r)
 
 replace (Lambda t t2) (x:xs) r | x == 1 = Lambda t (replace t2 xs r)
                                | x == 0 = Lambda (replace t xs r) t2
+
+replace (Case e alts) (x:xs) r | x == 0 = Case (replace e xs r) alts
+                               | x == 1 =
+                                   case xs of
+                                     [] -> error "internal: wrong position for case"
+                                     y:y':ys -> Case e $ replaceL y y' ys alts r
+
+replaceL y y' ys [] r = error "internal: wrong position for case branch"
+replaceL 0 0 ys ((p,e):alts) r = ((replace p ys r), e):alts
+replaceL 0 1 ys ((p,e):alts) r = (p, (replace e ys r)):alts
+replaceL y y' ys (a:alts) r | y > 0 = a : replaceL (y-1) y' ys alts r
+                                     
 
 stream1 = 1 : stream1
 takeOnes 1 = [[]]
@@ -88,3 +105,10 @@ transit (Res ks f pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):p
                pf' = replace pf pos newLam
            in [(Res ks f pf' (newEnv' ++ phi) Nothing j)]
 
+transit (Res ks f pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
+  let
+    pats = map fst alts
+    y = "y"++show i
+    (thetas, j) = makePatEnv pats (i+1)
+    altsEnv = undefined 
+    newEnv = (Phi (pos++[0]) (Var y) e gamma lvars):altsEnv

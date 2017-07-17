@@ -20,30 +20,15 @@ data Exp = Var Name
          | Lambda Exp Exp
          | Imply Exp Exp
          | Forall Name Exp
-         | Case Exp (Maybe Exp) [(Exp, Exp)]
+         | Case Exp [(Exp, Exp)]
          | Let [(Exp, Exp)] Exp
          | Ann Exp (Maybe Exp)
          deriving (Show, Eq, Ord)
 
 
--- nameless for the type
-data Nameless = V Int
-              | C Name
-              | IMP Nameless Nameless
-              | ALL Nameless
-              | AP Nameless Nameless
-              | LAM Nameless
-             deriving (Show, Eq)
-
 data Decl = DataDecl Exp Exp [(Exp, Exp)]
           | FunDecl Exp Exp [([Exp], Exp)]
           deriving (Show)
-
--- data Module = Mod {funs :: ,
---                    datas :: [DataDecl],
---                    annFuns ::[(Name, Exp, Exp)]}
---             deriving (Show)
-
 
 
 -- free vars of exp

@@ -85,7 +85,7 @@ instance Disp Exp where
         text "->",
         nest 2 $ dParen (precedence a - 1) t2]
 
-  disp (a@(Case e _ alts)) =
+  disp (a@(Case e alts)) =
     text "case" <+> disp e <+> text "of" $$ nest 2 (vcat (map dAlt alts))
     where dAlt (p, e) =fsep [disp p <+> text "->", nest 2 $ disp e]
 

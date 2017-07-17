@@ -143,7 +143,7 @@ caseExp = do
   alts <- block $ do{n <- con; as <- many pat; reserved "->"; a' <- term;
                      let a = foldl' (\ z x -> App z x) n as in 
                        return (a, a')}
-  return $ Case e Nothing alts
+  return $ Case e alts
 
 letExp = do
   reserved "let"
