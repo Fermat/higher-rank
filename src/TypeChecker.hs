@@ -108,7 +108,18 @@ transit (Res ks f pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):p
 transit (Res ks f pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
   let
     pats = map fst alts
+    brExps = map snd alts
     y = "y"++show i
+    len = length alts
     (thetas, j) = makePatEnv pats (i+1)
-    altsEnv = undefined 
+    posLeft =  map (\ p -> pos++[1, p, 0]) [0..(len-1)]
+    posRight = map (\ p -> pos++[1, p, 1]) [0..(len-1)]
+    leftEnv = map (\(po, (p, th)) -> (Phi po (Var y) p (th++gamma) lvars)) $
+              zip posLeft (zip pats thetas)
+    rightEnv = map (\(po, (e', th)) -> (Phi po goal e' (th++gamma) lvars)) $
+               zip posRight (zip brExps thetas)
+    altsEnv =  leftEnv ++ rightEnv
     newEnv = (Phi (pos++[0]) (Var y) e gamma lvars):altsEnv
+    newCase = Case (Var y) $ replicate len ((Var y), goal) 
+    pf' = replace pf pos newCase
+  in [(Res ks f pf' (newEnv++phi) Nothing j)]
