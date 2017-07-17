@@ -80,7 +80,12 @@ replaceL y y' ys (a:alts) r | y > 0 = a : replaceL (y-1) y' ys alts r
 stream1 = 1 : stream1
 takeOnes 1 = [[]]
 takeOnes n | n > 1 = (take (n-1) stream1):takeOnes (n-1)
-  
+
+
+getVars :: Exp -> ([Name],Exp)
+getVars (Forall x t) = let (xs, t') = getVars t in (x:xs, t')
+getVars t = ([], t)
+
 transit :: ResState -> [ResState]
 transit (Res ks f pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
   let (bs, h) = getHB goal
@@ -123,3 +128,14 @@ transit (Res ks f pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing 
     newCase = Case (Var y) $ replicate len ((Var y), goal) 
     pf' = replace pf pos newCase
   in [(Res ks f pf' (newEnv++phi) Nothing j)]
+
+transit (Res ks gn pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) =
+  let (vars, imp) = getVars goal
+      lv = length vars
+      absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
+      sub = zip vars (map Const absNames)
+      imp' = apply (Subst sub) imp
+      newAbs = foldr (\ a b -> Lambda (Var a) b) imp' absNames
+      pf' = replace pf pos newAbs
+      pos' = pos ++ take lv stream1
+  in [(Res ks gn pf' ((Phi pos' imp' exp gamma (lvars++ absNames)):phi) Nothing (i+lv))]
