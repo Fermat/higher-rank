@@ -35,6 +35,14 @@ getHB ::  Exp -> ([Exp],Exp)
 getHB (Imply x y) = let (bs, t') = getHB y in (x:bs, t')
 getHB t = ([], t)
 
+getVars :: Exp -> ([Name],Exp)
+getVars (Forall x t) = let (xs, t') = getVars t in (x:xs, t')
+getVars t = ([], t)
+
+separate f = let (vars, imp) = getVars f
+                 (bs, h) = getHB imp
+             in (vars, h, bs)
+                
 reImp :: [Exp] -> Exp -> Exp
 reImp [] h = h
 reImp (x:xs) h = Imply x (reImp xs h)
@@ -81,10 +89,13 @@ stream1 = 1 : stream1
 takeOnes 1 = [[]]
 takeOnes n | n > 1 = (take (n-1) stream1):takeOnes (n-1)
 
+scopeCheck :: [Name] -> [(Name, Exp)] -> Bool
+scopeCheck lvars sub = let (sub1, sub2) = partition (\(x, t) -> x `elem` lvars) sub
+                           r1 = and [ null (rvars `intersect` b) | (x, t) <- sub1,
+                                      let (a, b) = break (== x) lvars, let rvars = free' t]
+                           r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvars]
+                       in r1 && r2
 
-getVars :: Exp -> ([Name],Exp)
-getVars (Forall x t) = let (xs, t') = getVars t in (x:xs, t')
-getVars t = ([], t)
 
 transit :: ResState -> [ResState]
 transit (Res ks f pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
@@ -146,4 +157,34 @@ transit (Res ks gn pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
     (Var v) : xs -> handle v xs
     (Const v) : xs -> handle v xs
     a -> error $ "unhandle situation in transit " ++ show (disp exp)
-  where handle v xs = 
+  where handle v xs =
+          case lookup v gamma of
+            Nothing -> let m' = Just $ text "can't find" <+> text v
+                                <+> text "in the environment" in
+                         [(Res ks gn pf ((Phi pos goal exp gamma lvars):phi) m' i)]
+            Just f -> let (vars, head, body) = separate f
+                          i' = i + length vars
+                          fresh = map (\ (v, j) -> v ++ show j ++ "'") $ zip vars [i..]
+                          renaming = zip vars (map Var fresh)
+                          body'' = map (apply (Subst renaming)) body
+                          head'' = apply (Subst renaming) head
+                          n = length xs
+                          l = length body in
+                        if l <= n then
+                          let j = i' + (n-l)
+                              glVars = map (\ i -> Var $ "y"++show i++"'") [i'..j-1]
+                              goal' = reImp glVars goal
+                              ss = runMatch head'' goal' in
+                            case ss of
+                             [] ->
+                               let m' = Just $ text "can't match" <+> disp head'' $$
+                                        text "against" <+> disp goal $$
+                                        (nest 2 (text "when applying" <+>text v <+> text ":"
+                                                 <+> disp f)) $$
+                                        (nest 2 $ text "current mixed proof term" $$
+                                         nest 2 (disp pf))
+                               in [(Res ks gn pf ((Phi pos goal exp gamma lvars):phi) m' i)]
+                             _ -> 
+                              
+                                 
+          

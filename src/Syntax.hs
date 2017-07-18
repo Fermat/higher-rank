@@ -44,6 +44,8 @@ freeVar (Lambda p f) =
 freeVar (Imply b h) = freeVar b `S.union` freeVar h
 freeVar (Ann (Var x) _) = S.insert x S.empty
 
+free' e =freeVars e ++ eigenVar e
+  
 eigenVar = S.toList . eigen
 
 eigen (Var x) =  S.insert x S.empty
