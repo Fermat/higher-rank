@@ -97,6 +97,18 @@ scopeCheck lvars sub = let (sub1, sub2) = partition (\(x, t) -> x `elem` lvars) 
                        in r1 && r2
 
 
+applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
+applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <- ls]
+                      ls' = map (\(Phi p g e env lvars) ->
+                                    (Phi p (normalize $ apply (Subst sub) g) e
+                                      (map (\ (x, t) -> (x, normalize $ apply (Subst sub) t))
+                                       env)
+                                     (lvars \\ map fst sub))) ls
+                  in if and $ map fst f then Right ls'
+                     else let (Phi p g e env lvars):as = [ l | (b, l) <- f, not b]
+                              m = (nest 2 (text "environmental scope error when applying substitution") $$ nest 2 ( text "[" <+> disp sub <+> text "]")) $$ (nest 2 $ text "local variables list:" $$ nest 2 (hsep $ map text lvars)) $$ (nest 2 $ text "the local goal:" $$ nest 2 (disp g)) $$ (nest 2 $ text "the local expression:" $$ nest 2 (disp e))
+                          in Left m
+                             
 transit :: ResState -> [ResState]
 transit (Res ks f pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
   let (bs, h) = getHB goal
@@ -184,7 +196,10 @@ transit (Res ks gn pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                         (nest 2 $ text "current mixed proof term" $$
                                          nest 2 (disp pf))
                                in [(Res ks gn pf ((Phi pos goal exp gamma lvars):phi) m' i)]
-                             _ -> 
-                              
-                                 
+                             _ ->
+                               do sub <- ss
+                                  let subFCheck = [(x, y)|(x, y) <- sub, not $ x `elem` fresh]
+                                  if scopeCheck lvars subFCheck
+                                    then let dom = free head''
+                                             
           
