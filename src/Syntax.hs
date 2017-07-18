@@ -101,6 +101,8 @@ norm (App t' t) =
 norm (Imply t t') = Imply (norm t) (norm t')
 norm (Forall x t) = Forall x (norm t)
 
+
+
 {-
 getHead a = head $ flatten a
 getArgs a = tail $ flatten a

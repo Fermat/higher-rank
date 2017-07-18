@@ -227,7 +227,7 @@ transit (Res ks gn pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                              contm = foldl' (\ z x -> App z x)
                                                      (foldl' (\ z x -> App z x) name np)
                                                      body1
-                                             pf' = normEvidence $ apply (Subst subFCheck) pf
+                                             pf' = normalize $ apply (Subst subFCheck) pf
                                              pf'' = replace pf' pos contm
                                              zeros = makeZeros $ length body1
                                              ps = map (\ x -> pos++x++[1]) zeros
