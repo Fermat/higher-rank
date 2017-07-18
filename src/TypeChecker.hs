@@ -6,7 +6,8 @@ import Matching
 import KindChecker
 
 import Text.PrettyPrint
-
+import Data.List
+import Data.Char
 
 type Pos = [Int] 
 
@@ -86,8 +87,12 @@ replaceL y y' ys (a:alts) r | y > 0 = a : replaceL (y-1) y' ys alts r
                                      
 
 stream1 = 1 : stream1
+stream0 = 0 : stream0
+make n s | n > 0 = take (n-1) s
 takeOnes 1 = [[]]
 takeOnes n | n > 1 = (take (n-1) stream1):takeOnes (n-1)
+makeZeros 0 = []
+makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
 scopeCheck :: [Name] -> [(Name, Exp)] -> Bool
 scopeCheck lvars sub = let (sub1, sub2) = partition (\(x, t) -> x `elem` lvars) sub
@@ -108,7 +113,15 @@ applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <
                      else let (Phi p g e env lvars):as = [ l | (b, l) <- f, not b]
                               m = (nest 2 (text "environmental scope error when applying substitution") $$ nest 2 ( text "[" <+> disp sub <+> text "]")) $$ (nest 2 $ text "local variables list:" $$ nest 2 (hsep $ map text lvars)) $$ (nest 2 $ text "the local goal:" $$ nest 2 (disp g)) $$ (nest 2 $ text "the local expression:" $$ nest 2 (disp e))
                           in Left m
-                             
+
+
+arrange :: [((Pos, Exp), Exp)] -> ([((Pos, Exp), Exp)], [((Pos, Exp), Exp)])
+arrange ls =  partition helper ls
+  where helper ((p,f),e) = let (vars, h, _) = separate f
+                               fr = freeVars f
+                           in null (fr `intersect` (freeVars h))
+
+                              
 transit :: ResState -> [ResState]
 transit (Res ks f pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
   let (bs, h) = getHB goal
@@ -197,9 +210,52 @@ transit (Res ks gn pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                          nest 2 (disp pf))
                                in [(Res ks gn pf ((Phi pos goal exp gamma lvars):phi) m' i)]
                              _ ->
-                               do sub <- ss
+                               do Subst sub <- ss
                                   let subFCheck = [(x, y)|(x, y) <- sub, not $ x `elem` fresh]
                                   if scopeCheck lvars subFCheck
-                                    then let dom = free head''
+                                    then let dom = freeVars head''
+                                             body' = map normalize $ (map (apply (Subst sub)) body'')
+                                             body1 = body' ++ (map (apply (Subst sub)) glVars)
+                                             np = ([ s | r <- fresh,
+                                                        let s = case lookup r sub of
+                                                                  Nothing -> (Var r)
+                                                                  Just t -> t])
+                                             lvars' = (lvars \\ (map fst sub)) ++
+                                                         [ x | x <- fresh, not (x `elem` dom)]
+                                             name = if isUpper $ Data.List.head v
+                                                       then Const v else Var v
+                                             contm = foldl' (\ z x -> App z x)
+                                                     (foldl' (\ z x -> App z x) name np)
+                                                     body1
+                                             pf' = normEvidence $ apply (Subst subFCheck) pf
+                                             pf'' = replace pf' pos contm
+                                             zeros = makeZeros $ length body1
+                                             ps = map (\ x -> pos++x++[1]) zeros
+                                             gamma' = map
+                                                         (\(x, y) ->
+                                                             (x, normalize $ apply (Subst sub) y))
+                                                         gamma
+                                             (high, low) = arrange $ zip (zip ps body1) xs
+                                             (high', low') = (map (\((p, g),e ) -> (Phi p g e gamma' lvars')) high, map (\((p, g), e ) -> (Phi p g e gamma' lvars')) low)
+                                             phi' = applyPhi subFCheck phi in
+                                           case phi' of
+                                             Right p ->
+                                               return $
+                                               Res ks gn pf'' (high'++low'++p) Nothing j
+                                             Left m' ->
+                                               let mess = text "globally, when matching"
+                                                          <+> disp (head'') $$
+                                                          text "against"<+> disp (goal)
+                                                          $$ (nest 2 (text "when applying" <+> text v <+> text ":" <+> disp f)) $$ (nest 2 (text "when applying substitution" <+> text "[" <+> disp sub <+> text "]")) $$ (nest 2 $ text "current variables list:" $$ nest 2 (hsep $ map text lvars)) $$ (nest 2 $ text "the current mixed proof term:" $$ nest 2 (disp pf))
+                                                   m1 = m' $$ nest 2 mess in
+                                                 [Res ks gn pf ((Phi pos goal exp gamma lvars):phi) (Just m1) i]
+
+                                    else let mess = text "scope error when matching"
+                                                    <+> disp (head'') $$
+                                                    text "against"<+> disp (goal)
+                                                    $$ (nest 2 (text "when applying" <+> text v <+> text ":" <+> disp f)) $$ (nest 2 (text "when applying substitution" <+> text "[" <+> disp sub <+> text "]")) $$ (nest 2 $ text "current variables list:" $$ nest 2 (hsep $ map text lvars)) $$ (nest 2 $ text "the current mixed proof term:" $$ nest 2 (disp pf))
+                                         in [Res ks gn pf ((Phi pos goal exp gamma lvars):phi) (Just mess) i]
+                        else undefined
+                                             
                                              
           
