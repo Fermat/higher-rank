@@ -14,6 +14,23 @@ type Pos = [Int]
 -- Global type environment
 type TyEnv = [(Name, Exp)]
 
+makeTyEnv :: [Decl] -> TyEnv
+makeTyEnv [] = [] 
+makeTyEnv ((DataDecl _ _ cons):xs) = [(d, e) | (Const d, e) <- cons] ++ makeTyEnv xs
+makeTyEnv ((FunDecl (Var f) t _):xs) = (f, t):makeTyEnv xs
+
+makeLam pats e = foldl' (\ e' p -> Lambda p e') e pats
+  
+checkDecls a = let tyEnv = makeTyEnv a
+                   funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d)) defs |
+                                       (FunDecl (Var f) t defs) <- a]
+              in mapM (typeCheck tyEnv) funcDefs
+
+typeCheck env (goal, e) =
+  let phi = Phi [] goal e env []
+      init = Res goal [phi] Nothing 0 in
+    ersm [init] 
+        
 data Phi = Phi{
               position :: Pos,
               currentGoal :: Exp,

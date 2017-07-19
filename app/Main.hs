@@ -3,7 +3,7 @@ module Main where
 import Parser(parseModule)
 import Pretty(disp)
 import KindChecker(kindData, kindFunc, getKindDef)
-import TypeChecker(ersm)
+import TypeChecker(checkDecls)
 
 
 import Text.PrettyPrint
@@ -25,8 +25,11 @@ main = flip catches handlers $ do
                            let kEnv = getKindDef a
                            kindData a kEnv
                            kindFunc a kEnv
+                           let res = checkDecls a
+                           case res of
+                             Left e -> throw e
+                             Right pfs -> print $ vcat (map disp pfs)
 
-                               
 
     _ -> putStrLn "usage: higher-rank <filename>"
   where handlers = [Handler parseHandler]
