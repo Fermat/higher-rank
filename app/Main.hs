@@ -1,10 +1,9 @@
 {-# LANGUAGE StandaloneDeriving #-}
 module Main where
-import Parser
-import Syntax
-import Pretty
-import Matching
-import KindChecker
+import Parser(parseModule)
+import Pretty(disp)
+import KindChecker(kindData, kindFunc, getKindDef)
+import TypeChecker(ersm)
 
 
 import Text.PrettyPrint
@@ -23,7 +22,7 @@ main = flip catches handlers $ do
              Left e -> throw e
              Right a -> do putStrLn $ "Parsing success! \n"
                            print $ disp a
-                           let kEnv = [(d, k) | (DataDecl (Const d) k ls)<- a ]
+                           let kEnv = getKindDef a
                            kindData a kEnv
                            kindFunc a kEnv
 

@@ -359,3 +359,19 @@ transit (Res ks gn pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                           in [Res ks gn pf ((Phi pos goal exp gamma lvars):phi) (Just mess) i]
 
           
+ersm :: [ResState] -> Either Doc Exp
+ersm init = let s = concat $ map transit init
+                (fails, pending) = partition failure s
+                flag = length fails == length s
+            in if flag then
+                 let rs = map (\(Res _ _ _ _ (Just m) _) -> m) fails in
+                   Left $ sep (map (\ (d, i) -> text "Wrong situation" <+> int i $$ nest 2 d)
+                                $ zip rs [1..])
+               else case [p | p <- pending, success p ] of
+                      [] -> ersm s 
+                      (Res _ _ pf _ _ _):_ -> Right pf
+                             
+  where failure (Res _ _ _ _ (Just _) _) = True
+        failure _ = False
+        success (Res _ gn pf [] Nothing i) = True
+        success _ = False

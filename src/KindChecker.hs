@@ -98,6 +98,8 @@ runKinding t g = do (k, sub) <- runReaderT (runStateT (evalStateT (inferKind t) 
 
 instance Exception Doc 
 
+getKindDef a = [(d, k) | (DataDecl (Const d) k ls)<- a ]
+
 kindData :: [Decl] -> KindDef -> IO ()
 kindData a g = do
   let ds = concat [cons | (DataDecl _ _ cons) <- a]
