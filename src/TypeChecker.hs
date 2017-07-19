@@ -139,7 +139,7 @@ arrange ls =  partition helper ls
 
                               
 transit :: ResState -> [ResState]
-transit state | trace ("transit " ++show (state)) False = undefined
+-- transit state | trace ("transit " ++show (state)) False = undefined
 transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
   let (bs, h) = getHB goal
       (vars, b) = (viewLArgs exp, viewLBody exp)
@@ -153,12 +153,14 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
                    (nest 2 $ text "current mixed proof term" $$ nest 2 (disp pf)) in
           [(Res pf ((Phi pos goal exp gamma lvars):phi) m' i)]
       else let (thetas, j) = makePatEnv vars i
+               newlvars = map snd $ concat thetas
+               lvars' = lvars++(map (\ (Var x) -> x) newlvars)
                h' = reImp (drop len bs) h  
                positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes len)
                pairs = zip (zip (zip positionsVars bs) vars) thetas
-               newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars)) pairs
+               newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars')) pairs
                boPos = pos++(take (len-1) stream1)++[1]
-               newEnv' = newEnv ++ [(Phi boPos h' b (concat thetas ++ gamma) lvars)]
+               newEnv' = newEnv ++ [(Phi boPos h' b (concat thetas ++ gamma) lvars')]
                newLam = foldr (\ a b -> Lambda a b) h' (take len bs)
                pf' = replace pf pos newLam
            in [(Res pf' (newEnv' ++ phi) Nothing j)]
