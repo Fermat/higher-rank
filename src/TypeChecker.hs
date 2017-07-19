@@ -69,7 +69,7 @@ patternVars p i = let fvs = freeVars p
                       j = (i+(length fvs))-1
                       ns = [i..j]
                       vars = map (\ n -> Var $ "y"++show n++"'") ns in
-                    (zip fvs vars, j)
+                    (zip fvs vars, j+1)
 
 makePatEnv :: [Exp] -> Int -> ([TyEnv], Int)
 makePatEnv [] i = ([], i)
@@ -229,7 +229,9 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                         (nest 2 $ text "current program" $$
                                          nest 2 (disp exp)) $$
                                         (nest 2 $ text "current mixed proof term" $$
-                                         nest 2 (disp pf))
+                                         nest 2 (disp pf)) $$
+                                        (nest 2 $ text "current env" $$
+                                         nest 2 (disp gamma))
                                in [(Res pf ((Phi pos goal exp gamma lvars):phi) m' i)]
 
         app2 fresh head'' body'' f v xs i' n =
