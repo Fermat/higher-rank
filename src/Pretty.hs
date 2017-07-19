@@ -69,7 +69,7 @@ instance Disp Exp where
     let vars = viewLArgs a
         b = viewLBody a
         ds = map helper vars 
-    in sep [text "\\" <+> sep ds <+> text "->", nest 4 $ disp b]
+    in sep [text "\\" <+> sep ds <+> text ".", nest 4 $ disp b]
     where helper a@(App _ _ ) = parens $ disp a
           helper a = disp a
 

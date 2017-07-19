@@ -8,6 +8,7 @@ import KindChecker
 import Text.PrettyPrint
 import Data.List
 import Data.Char
+import Debug.Trace
 
 type Pos = [Int] 
 
@@ -19,7 +20,7 @@ makeTyEnv [] = []
 makeTyEnv ((DataDecl _ _ cons):xs) = [(d, e) | (Const d, e) <- cons] ++ makeTyEnv xs
 makeTyEnv ((FunDecl (Var f) t _):xs) = (f, t):makeTyEnv xs
 
-makeLam pats e = foldl' (\ e' p -> Lambda p e') e pats
+makeLam pats e = foldr (\ p e' -> Lambda p e') e pats
   
 checkDecls a = let tyEnv = makeTyEnv a
                    funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d)) defs |
@@ -138,6 +139,7 @@ arrange ls =  partition helper ls
 
                               
 transit :: ResState -> [ResState]
+transit state | trace ("transit " ++show (state)) False = undefined
 transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
   let (bs, h) = getHB goal
       (vars, b) = (viewLArgs exp, viewLBody exp)
@@ -310,7 +312,11 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                          (nest 2 (text "when applying" <+>text v <+> text ":"
                                    <+> disp f)) $$
                          (nest 2 $ text "current mixed proof term" $$
-                           nest 2 (disp pf))
+                           nest 2 (disp pf)) $$
+                         (nest 2 $ text "current env" $$
+                           nest 2 (disp gamma)) $$
+                         (nest 2 $ text "current exp" $$
+                           nest 2 (disp exp)) 
                 in [(Res pf ((Phi pos goal exp gamma lvars):phi) m' i)]
               _ ->
                 do Subst sub <- ss
