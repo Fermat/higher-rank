@@ -172,14 +172,16 @@ transit (Res pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
     y = "y"++show i
     len = length alts
     (thetas, j) = makePatEnv pats (i+1)
+    newlvars = y : map (\(Var x) -> x) (map snd $ concat thetas)
+    lvars' = lvars++newlvars
     posLeft =  map (\ p -> pos++[1, p, 0]) [0..(len-1)]
     posRight = map (\ p -> pos++[1, p, 1]) [0..(len-1)]
-    leftEnv = map (\(po, (p, th)) -> (Phi po (Var y) p (th++gamma) lvars)) $
+    leftEnv = map (\(po, (p, th)) -> (Phi po (Var y) p (th++gamma) lvars')) $
               zip posLeft (zip pats thetas)
-    rightEnv = map (\(po, (e', th)) -> (Phi po goal e' (th++gamma) lvars)) $
+    rightEnv = map (\(po, (e', th)) -> (Phi po goal e' (th++gamma) lvars')) $
                zip posRight (zip brExps thetas)
     altsEnv =  leftEnv ++ rightEnv
-    newEnv = (Phi (pos++[0]) (Var y) e gamma lvars):altsEnv
+    newEnv = (Phi (pos++[0]) (Var y) e gamma lvars'):altsEnv
     newCase = Case (Var y) $ replicate len ((Var y), goal) 
     pf' = replace pf pos newCase
   in [(Res pf' (newEnv++phi) Nothing j)]
@@ -219,7 +221,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                       in
                         if l <= n then let j = i' + (n-l) in
                                          app1 fresh head'' body'' f v xs j i' 
-                        else if l > n && l <= n+m && m > 0 then
+                        else if l > n then
                                app2 fresh head'' body'' f v xs i' n
                              else
                                let m' = Just $ text "unhandle situation in application" $$

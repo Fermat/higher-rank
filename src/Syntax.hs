@@ -74,6 +74,9 @@ apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply s f2)
 apply s (Lambda x f2) = Lambda x (apply s f2)
 apply s Star = Star
+apply s (Case e cons) = Case (apply s e) cons'
+  where cons' = map (\(p,exp) -> (apply s p, apply s exp)) cons
+  
 apply s e = error $ show e ++ "from apply"
 
 extend :: Subst -> Subst -> Subst
@@ -100,7 +103,8 @@ norm (App t' t) =
     b -> b
 norm (Imply t t') = Imply (norm t) (norm t')
 norm (Forall x t) = Forall x (norm t)
-
+norm (Case e alts) = Case (norm e) alts'
+  where alts' = map (\(p, exp) -> (p, norm exp)) alts
 
 
 {-
