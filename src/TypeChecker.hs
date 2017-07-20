@@ -207,7 +207,8 @@ transit (Res pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
     pf' = replace pf pos newCase
   in [(Res pf' (newEnv++phi) Nothing j)]
 
-transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i)
+-- there is a forall problem
+transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) 
   | not (isSingle $ head (flatten exp)) =
   let (vars, imp) = getVars goal
       lv = length vars
@@ -220,7 +221,7 @@ transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i)
   in [(Res pf' ((Phi pos' imp' exp gamma (lvars++ absNames)):phi) Nothing (i+lv))]
 
 
-transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
+transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) = 
   case flatten exp of
     (Var v) : xs -> handle v xs
     (Const v) : xs -> handle v xs
@@ -407,6 +408,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                                     
                           in [Res pf ((Phi pos goal exp gamma lvars):phi) (Just mess) i]
 
+    
           
 ersm :: [ResState] -> Either Doc Exp
 ersm init = let s = concat $ map transit init
