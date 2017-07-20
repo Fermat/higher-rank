@@ -35,3 +35,34 @@ test = revapp (\ x -> x) poly
 
 id :: forall x . x -> x
 id = \ x -> x
+
+f :: (forall a . List a -> List a) -> Pair (List Bool) (List Nat)
+f x = Pair (x (Cons True (Cons False Nil))) (x (Cons Z (Cons (S Z) Nil)))
+
+
+fix :: forall a . (a -> a) -> a
+fix f = f (fix f)
+
+data Term :: * -> * where
+     Var :: forall a . a -> Term a
+     App :: forall a . Term a -> Term a -> Term a
+     Lam :: forall a . Term (Incr a) -> Term a
+
+data Incr :: * -> * where
+  Zero :: forall a . Incr a
+  Succ :: forall a . a -> Incr a
+
+mapI :: forall a b . (a -> b) -> Incr a -> Incr b
+mapI f Zero = Zero
+mapI f (Succ x) = Succ (f x)
+
+mapT :: forall a b. (a -> b) -> Term a -> Term b
+mapT = fix (\ mt -> \ f t -> 
+       	     	       case t of
+                           Var x -> Var (f x)
+			   App t1 t2 -> App (mt f t1) (mt f t2))
+--			   Lam t -> Lam (mt (mapI f) t)
+
+
+
+

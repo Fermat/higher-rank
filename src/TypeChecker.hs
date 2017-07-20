@@ -64,6 +64,10 @@ reImp :: [Exp] -> Exp -> Exp
 reImp [] h = h
 reImp (x:xs) h = Imply x (reImp xs h)
 
+reLam :: [Exp] -> Exp -> Exp
+reLam [] h = h
+reLam (x:xs) h = Lambda x (reLam xs h)
+
 patternVars :: Exp -> Int -> (TyEnv, Int)
 patternVars p i = let fvs = freeVars p
                       j = (i+(length fvs))-1
@@ -147,26 +151,34 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
   let (bs, h) = getHB goal
       (vars, b) = (viewLArgs exp, viewLBody exp)
       len = length vars
+      lenB = length bs
   in
-      if len > length bs then
-        let m' = Just $
-                   text "the number of lambda abstractions is more than the body" $$
-                   (nest 2 (text "current goal: " <+> disp goal)) $$ nest 2
-                   (text "current program:"<+> disp exp) $$
-                   (nest 2 $ text "current mixed proof term" $$ nest 2 (disp pf)) in
-          [(Res pf ((Phi pos goal exp gamma lvars):phi) m' i)]
-      else let (thetas, j) = makePatEnv vars i
-               newlvars = map snd $ concat thetas
-               lvars' = lvars++(map (\ (Var x) -> x) newlvars)
-               h' = reImp (drop len bs) h  
-               positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes len)
-               pairs = zip (zip (zip positionsVars bs) vars) thetas
-               newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars')) pairs
-               boPos = pos++(take (len-1) stream1)++[1]
-               newEnv' = newEnv ++ [(Phi boPos h' b (concat thetas ++ gamma) lvars')]
-               newLam = foldr (\ a b -> Lambda a b) h' (take len bs)
-               pf' = replace pf pos newLam
-           in [(Res pf' (newEnv' ++ phi) Nothing j)]
+    if len > length bs then
+      let vars' = take lenB vars
+          b' = reLam (drop lenB vars) b
+          (thetas, j) = makePatEnv vars' i
+          newlvars = map snd $ concat thetas
+          lvars' = lvars++(map (\ (Var x) -> x) newlvars)
+          positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes lenB)
+          pairs = zip (zip (zip positionsVars bs) vars') thetas
+          newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars')) pairs
+          boPos = pos++(take (lenB-1) stream1)++[1]
+          newEnv' = newEnv ++ [(Phi boPos h b' (concat thetas ++ gamma) lvars')]
+          newLam = foldr (\ a b -> Lambda a b) h bs
+          pf' = replace pf pos newLam
+      in [(Res pf' (newEnv' ++ phi) Nothing j)]
+    else let (thetas, j) = makePatEnv vars i
+             newlvars = map snd $ concat thetas
+             lvars' = lvars++(map (\ (Var x) -> x) newlvars)
+             h' = reImp (drop len bs) h  
+             positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes len)
+             pairs = zip (zip (zip positionsVars bs) vars) thetas
+             newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars')) pairs
+             boPos = pos++(take (len-1) stream1)++[1]
+             newEnv' = newEnv ++ [(Phi boPos h' b (concat thetas ++ gamma) lvars')]
+             newLam = foldr (\ a b -> Lambda a b) h' (take len bs)
+             pf' = replace pf pos newLam
+         in [(Res pf' (newEnv' ++ phi) Nothing j)]
 
 transit (Res pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
   let
