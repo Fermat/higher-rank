@@ -60,8 +60,8 @@ mapT :: forall a b. (a -> b) -> Term a -> Term b
 mapT = fix (\ mt -> \ f t -> 
        	     	       case t of
                            Var x -> Var (f x)
-			   App t1 t2 -> App (mt f t1) (mt f t2))
---			   Lam t -> Lam (mt (mapI f) t)
+			   App t1 t2 -> App (mt f t1) (mt f t2)
+			   Lam t -> Lam (mt (mapI f) t))
 
 
 

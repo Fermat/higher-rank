@@ -117,12 +117,13 @@ takeOnes n | n > 1 = (take (n-1) stream1):takeOnes (n-1)
 makeZeros 0 = []
 makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
+-- removing the notion of global existential variables
 scopeCheck :: [Name] -> [(Name, Exp)] -> Bool
 scopeCheck lvars sub = let (sub1, sub2) = partition (\(x, t) -> x `elem` lvars) sub
                            r1 = and [ null (rvars `intersect` b) | (x, t) <- sub1,
                                       let (a, b) = break (== x) lvars, let rvars = free' t]
-                           r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvars]
-                       in r1 && r2
+--                           r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvars]
+                       in r1 -- && r2
 
 
 applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
@@ -134,7 +135,12 @@ applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <
                                      (lvars \\ map fst sub))) ls
                   in if and $ map fst f then Right ls'
                      else let (Phi p g e env lvars):as = [ l | (b, l) <- f, not b]
-                              m = (nest 2 (text "environmental scope error when applying substitution") $$ nest 2 ( text "[" <+> disp sub <+> text "]")) $$ (nest 2 $ text "local variables list:" $$ nest 2 (hsep $ map text lvars)) $$ (nest 2 $ text "the local goal:" $$ nest 2 (disp g)) $$ (nest 2 $ text "the local expression:" $$ nest 2 (disp e))
+                              m = (nest 2 (text "environmental scope error when applying substitution") $$
+                                   nest 2 ( text "[" <+> disp sub <+> text "]")) $$
+                                  (nest 2 $ text "local variables list:" $$
+                                   nest 2 (hsep $ map text lvars)) $$
+                                  (nest 2 $ text "the local goal:" $$ nest 2 (disp g)) $$
+                                  (nest 2 $ text "the local expression:" $$ nest 2 (disp e))
                           in Left m
 
 
@@ -296,7 +302,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                               Right p ->
                                 return $ Res pf'' (high'++low'++p) Nothing i'
                               Left m' ->
-                                let mess = text "globally, when matching" <+> disp (head'') $$
+                                let mess = text "globally, when matching" <+> disp (newHead) $$
                                            text "against"<+> disp (goal)$$
                                            (nest 2 (text "when applying" <+> text v
                                                     <+> text ":" <+> disp f)) $$
