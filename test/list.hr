@@ -2,9 +2,19 @@ module List where
 
 data List :: * -> * where
  Nil :: forall a . List a 
- Cons :: forall a . a -> List a -> List a                   
+ Cons :: forall a . a -> List a -> List a
 
+data Bool :: * where
+ True :: Bool
+ False :: Bool
 
+data Nat :: * where
+  Z :: Nat
+  S :: Nat -> Nat
+
+data Pair :: * -> * -> * where
+  Pair :: forall a b . a -> b -> Pair a b
+  
 -- map :: forall a b . (a -> b) -> List a -> List b
 -- map f Nil = Nil
 -- map f (Cons x xs) = Cons (f x) (map f xs)
@@ -13,3 +23,15 @@ map' :: forall a b . (a -> b) -> List a -> List b
 map' f l = case l of
        	   	Nil -> Nil
 		Cons x xs -> Cons (f x) (map' f xs)
+
+revapp :: forall a b . a -> (a -> b) -> b
+revapp x f = f x
+
+poly :: (forall v . v -> v) -> Pair Nat Bool
+poly f = Pair (f Z) (f True)
+
+test :: Pair Nat Bool
+test = revapp (\ x -> x) poly
+
+id :: forall x . x -> x
+id = \ x -> x

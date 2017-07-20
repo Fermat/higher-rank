@@ -100,7 +100,10 @@ replaceL y y' ys [] r = error "internal: wrong position for case branch"
 replaceL 0 0 ys ((p,e):alts) r = ((replace p ys r), e):alts
 replaceL 0 1 ys ((p,e):alts) r = (p, (replace e ys r)):alts
 replaceL y y' ys (a:alts) r | y > 0 = a : replaceL (y-1) y' ys alts r
-                                     
+
+isSingle (Var _) = True
+isSingle (Const _) = True
+isSingle _ = False
 
 stream1 = 1 : stream1
 stream0 = 0 : stream0
@@ -186,7 +189,8 @@ transit (Res pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
     pf' = replace pf pos newCase
   in [(Res pf' (newEnv++phi) Nothing j)]
 
-transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) =
+transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i)
+  | not (isSingle $ head (flatten exp)) =
   let (vars, imp) = getVars goal
       lv = length vars
       absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
