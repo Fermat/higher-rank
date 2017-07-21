@@ -1,0 +1,10 @@
+module Monad where
+
+data Monad :: (* -> *) -> * where
+  Mon :: forall m . (forall a . a -> m a) -> (forall a b . m a -> (a -> m b) -> m b) -> Monad m
+
+return :: forall m . Monad m -> (forall a . a -> m a)
+return (Mon r b) = r
+
+bind :: forall m . Monad m -> (forall a b . m a -> (a -> m b) -> m b)
+bind (Mon r b) = b
