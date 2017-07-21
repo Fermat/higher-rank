@@ -75,3 +75,25 @@ showP x y = app (app (app (app (Cons L Nil) x) (Cons X Nil)) y) (Cons R Nil)
 showI :: Incr (List Char) -> List Char
 showI Zero = Cons Z Nil
 showI (Succ x) = Cons S x
+
+data TermE :: * -> * where
+  VarE :: forall a . a -> TermE a
+  AppE :: forall a  . TermE a -> TermE a -> TermE a
+  LamE :: forall a . (TermE (Incr (TermE a))) -> TermE a
+
+mapE :: forall a b . (a -> b) -> TermE a -> TermE b
+mapE f (VarE x) = VarE  (f x)
+mapE f (AppE p1 p2) = AppE (mapE f p1) (mapE f p2)
+mapE f (LamE t) = LamE (mapE (mapI (mapE f)) t)
+
+gfoldE :: forall m n b . (forall a. m a -> n a) ->
+            (forall a. n a -> n a -> n a) -> (forall a. n (Incr (n a)) -> n a) ->
+	      (forall a. Incr a -> m (Incr a)) ->
+	         TermE (m b) -> n b
+gfoldE v a l k (VarE x) = v x
+gfoldE v a l k (AppE p1 p2) = a (gfoldE v a l k p1) (gfoldE v a l k p2)
+gfoldE v a l k (LamE t) = l (gfoldE v a l k (mapE (\ x -> k (mapI (gfoldE v a l k) x)) t))
+
+joinE :: forall a . TermE (TermE a) -> TermE a
+joinE x = gfoldE id AppE LamE VarE x
+
