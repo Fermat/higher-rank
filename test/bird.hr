@@ -16,6 +16,18 @@ data Incr :: * -> * where
   Zero :: forall a . Incr a
   Succ :: forall a . a -> Incr a
 
+data Char :: * where
+  LL :: Char
+  L :: Char
+  R :: Char
+  Z :: Char
+  S :: Char
+  X :: Char
+app :: forall a . List a -> List a -> List a
+app Nil x = x
+app (Cons x xs) l = Cons x (app xs l)
+
+
 mapI :: forall a b . (a -> b) -> Incr a -> Incr b
 mapI f Zero = Zero
 mapI f (Succ x) = Succ (f x)
@@ -35,5 +47,31 @@ mapT' = fix (\ mt -> \ f t ->
 		     App t1 t2 -> App (mt f t1) (mt f t2)
 		     Lam t -> Lam (mt (mapI f) t))
 
+foldT :: forall n b . (forall a. a -> n a) -> (forall a. n a -> n a -> n a) ->
+      	   (forall a. n (Incr a) -> n a) -> Term b -> n b
+foldT v a l (Var x) = v x
+foldT v a l (App p1 p2) = a  (foldT v a l p1) (foldT v a l p2)
+foldT v a l (Lam t) = l (foldT v a l t)
 
+gfoldT :: forall m n b . (forall a. m a -> n a) -> (forall a. n a -> n a -> n a) ->
+       	    (forall a. n (Incr a) -> n a) -> (forall a. Incr (m a) -> m (Incr a)) ->
+	    	    Term (m b) -> n b
+gfoldT v a l k (Var x) = v x
+gfoldT v a l k (App p1 p2) = a (gfoldT v a l k p1) (gfoldT v a l k p2)
+gfoldT v a l k (Lam t) = l (gfoldT v a l k ((mapT k) t))
 
+id :: forall a . a -> a
+id x = x
+
+showT :: Term (List Char) -> List Char
+showT = gfoldT id showP (\ x -> Cons LL x) showI
+
+helper :: List Char -> List Char
+helper = Cons LL
+
+showP :: List Char -> List Char -> List Char
+showP x y = app (app (app (app (Cons L Nil) x) (Cons X Nil)) y) (Cons R Nil)
+
+showI :: Incr (List Char) -> List Char
+showI Zero = Cons Z Nil
+showI (Succ x) = Cons S x

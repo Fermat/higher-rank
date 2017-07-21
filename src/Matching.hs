@@ -51,6 +51,7 @@ match e (Var x) | (Var x) == e = return [Subst [(x, e)]]
                 | x `elem` freeVars e = return []
                 | otherwise = return [Subst [(x, e)]]
 
+-- rigid-rigid
 match e1 e2 | (Const x):xs <- flatten e1,
               (Const y):ys <- flatten e2,
               x == y,
@@ -61,6 +62,7 @@ match e1 e2 | (Const x):xs <- flatten e1,
                                              | sub <- x, subs <- s']})
                 [Subst []] (zip xs ys)
 
+-- first-order simp
 match e1 e2 | (Var x):xs <- flatten e1,
               (Var y):ys <- flatten e2,
               x == y,
@@ -71,7 +73,10 @@ match e1 e2 | (Var x):xs <- flatten e1,
                                              | sub <- x, subs <- s']})
                 [Subst []] (zip xs ys)
 
-                
+-- rigid-flexible
+match e1 e2 | (Const x):xs <- flatten e1, (Var z):ys <- flatten e2   = match e2 e1
+
+-- rigid-flexible 
 match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
               (Var x) /= y  =
               do

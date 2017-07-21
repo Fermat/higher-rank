@@ -312,7 +312,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
               ss = runMatch newHead goal in
             case ss of
               [] ->
-                let m' = Just $ text "can't match" <+> disp head'' $$
+                let m' = Just $ text "from app2, can't match" <+> disp newHead $$
                          text "against" <+> disp goal $$
                          (nest 2 (text "when applying" <+>text v <+> text ":"
                                    <+> disp f)) $$
@@ -384,8 +384,8 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
               ss = runMatch head'' goal' in
             case ss of
               [] ->
-                let m' = Just $ text "can't match" <+> disp head'' $$
-                         text "against" <+> disp goal $$
+                let m' = Just $ text "from app1, can't match" <+> disp head'' $$
+                         text "against" <+> disp goal' $$
                          (nest 2 (text "when applying" <+>text v <+> text ":"
                                    <+> disp f)) $$
                          (nest 2 $ text "current mixed proof term" $$
@@ -456,7 +456,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                                     
                           in [Res pf ((Phi pos goal exp gamma lvars):phi) (Just mess) i]
 
-    
+transit e = [e]
           
 ersm :: [ResState] -> Either Doc Exp
 ersm init = let s = concat $ map transit init

@@ -61,7 +61,7 @@ flatten :: Exp -> [Exp]
 flatten (App f1 f2) = flatten f1 ++ [f2]
 flatten a = [a]
 
--- substitution
+-- substitution that blindly substitutes
 newtype Subst = Subst [(String, Exp)] deriving (Show, Eq)
 
 apply :: Subst -> Exp -> Exp
