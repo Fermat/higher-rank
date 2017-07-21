@@ -21,8 +21,19 @@ mapI f Zero = Zero
 mapI f (Succ x) = Succ (f x)
 
 mapT :: forall a b. (a -> b) -> Term a -> Term b
-mapT = fix (\ mt -> \ f t -> 
-       	     	       case t of
-                           Var x -> Var (f x)
-			   App t1 t2 -> App (mt f t1) (mt f t2)
-			   Lam t -> Lam (mt (mapI f) t))
+mapT f (Var x) = Var (f x)
+mapT f (App t1 t2) = App (mapT f t1) (mapT f t2)
+mapT f (Lam t) = Lam (mapT (mapI f) t)
+
+-- fixMT :: forall a b. (forall a1 b1 . (forall a0 b0 . (a0 -> b0) -> Term a0 -> Term b0) -> ((a1 -> b1) -> Term a1 -> Term b1)) -> ((a -> b) -> Term a -> Term b)
+-- fixMT f = f (fixMT f)
+
+mapT' :: forall a b. (a -> b) -> Term a -> Term b
+mapT' = fix (\ mt -> \ f t ->
+      	      	   case t of
+		     Var x -> Var (f x)
+		     App t1 t2 -> App (mt f t1) (mt f t2)
+		     Lam t -> Lam (mt (mapI f) t))
+
+
+

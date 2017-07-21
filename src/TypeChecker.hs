@@ -257,7 +257,7 @@ transit (Res pf ((Phi pos goal@(Forall x y) (Var z) gamma lvars):phi) Nothing i)
        _ -> [(Res pf' ((Phi pos' imp' (Var z) gamma (lvars++ absNames)):phi) Nothing (i+lv))]
                    
 
-transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) =
+transit (Res pf ((Phi pos goal@(Forall x y) exp@(Lambda _ _) gamma lvars):phi) Nothing i) =
   let (vars, imp) = getVars goal
       lv = length vars
       absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
