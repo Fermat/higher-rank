@@ -73,7 +73,7 @@ match e1 e2 | (Var x):xs <- flatten e1,
                                              | sub <- x, subs <- s']})
                 [Subst []] (zip xs ys)
 
--- rigid-flexible
+-- exchange
 match e1 e2 | (Const x):xs <- flatten e1, (Var z):ys <- flatten e2   = match e2 e1
 
 -- rigid-flexible 
@@ -93,7 +93,7 @@ match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
                       (zip imiAndProj oldsubst)
                 return $ concat bs
 
-match e1 e2 = return [] 
+match e1 e2 = return [] -- error $ show (disp e1 <+> disp e2) --  
 
 genProj :: Int -> [Exp]
 genProj l = if l == 0 then []

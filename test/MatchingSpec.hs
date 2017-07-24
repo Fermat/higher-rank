@@ -54,4 +54,8 @@ sub4 = runMatch exp11 exp10
 sub5 = runMatch (Imply Star Star) (Imply Star (Var "x"))
 exp12 = App (Const "S") (Var "a")
 exp13 = App (Const "S") (Const "Z")
+exp14 = App (App  (Var "x") (Lambda (Var "y") (Var "y"))) (Const "C")
+exp15 = Forall "z" $ App (Const "F") (App (Var "x") (Var "z"))
+exp16 = Forall "z" $ App (Var "x")  (App (Const "F") (Var "z"))
+test1 = runMatch exp14 (Const "C")
 
