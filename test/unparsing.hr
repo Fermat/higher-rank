@@ -1,0 +1,95 @@
+module unparsing where
+data Char :: * where
+  LL :: Char
+  L :: Char
+  R :: Char
+  Z :: Char
+  S :: Char
+  X :: Char
+
+data List :: * -> * where
+ Nil :: forall a . List a 
+ Cons :: forall a . a -> List a -> List a
+
+app :: forall a . List a -> List a -> List a
+app Nil l = l
+app (Cons x xs) l = Cons x (app xs l)
+
+show :: List Char -> List Char
+show = id
+
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+{-
+newtype Id a = Id a
+newtype Comp f g a = Comp (f (g a))
+
+instance Functor Id where
+  fmap f (Id a) = Id (f a)
+
+instance (Functor f, Functor g) => Functor (Comp f g) where
+  fmap f (Comp a) = Comp $ fmap (fmap f) a 
+  
+class Functor f => Apply f a b | f a -> b where
+  apply :: f a -> b
+
+instance Apply ((->) a) b (a -> b) where
+  apply = id
+
+instance Apply Id a a where
+  apply (Id a) = a
+
+instance (Apply g a b, Apply f b c) => Apply (Comp f g) a c where
+  apply (Comp a) = apply (fmap apply a)
+
+add :: (Functor f, Functor g) => f String -> g String -> Comp f g String
+add f g = Comp $ fmap (\ s -> fmap (\ t -> s ++ t) g) f
+
+lit :: String -> Id String
+lit s = Id s
+
+int :: Int -> String
+int i = show i
+
+str :: String -> String
+str x = x
+
+format :: (Apply f String a) => f String -> a
+format d = apply d
+
+test :: String
+test = format (int `add` lit " is " `add` str) 1 "One"
+
+test1 = format (int `add` lit " is " `add` str)
+
+test2 = int `add` lit " is " `add` str
+-}
+
+---- below code is imaginary with second-order type checking
+
+
+type Id a = a
+type Apply f g a = f (g a) 
+
+add :: (Functor f, Functor g) => f String -> g String -> f (g String)
+add f g = fmap (\ s -> fmap (\ t -> s ++ t) g) f
+
+lit :: String -> String
+lit s = s
+
+int :: Int -> String
+int i = show i
+
+str :: String -> String
+str x = x
+
+-- test1 :: Id String -> String -> Id String
+test1 = add str int
+
+-- format :: Functor f => f String -> 
+-- format = d
+
