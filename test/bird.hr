@@ -66,6 +66,14 @@ id x = x
 showT :: Term (List Char) -> List Char
 showT = gfoldT id showP (\ x -> Cons LL x) showI
 
+
+joinT :: forall a . Term (Term a) -> Term a
+joinT x = gfoldT id App Lam distT x
+
+distT :: forall a . Incr (Term a) -> Term (Incr a)
+distT Zero = Var Zero
+distT (Succ x) = mapT Succ x
+
 helper :: List Char -> List Char
 helper = Cons LL
 
@@ -97,3 +105,8 @@ gfoldE v a l k (LamE t) = l (gfoldE v a l k (mapE (\ x -> k (mapI (gfoldE v a l 
 joinE :: forall a . TermE (TermE a) -> TermE a
 joinE x = gfoldE id AppE LamE VarE x
 
+cvtE :: forall a . TermE a -> Term a
+cvtE x = gfoldE Var App (\ y -> Lam (joinT (mapT distT y))) id x
+
+cvtBodyE :: forall a . TermE (Incr (TermE a)) -> Term (Incr a)
+cvtBodyE x = joinT (mapT distT (cvtE (mapE (mapI cvtE) x)))
