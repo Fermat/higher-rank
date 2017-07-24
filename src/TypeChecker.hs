@@ -81,6 +81,13 @@ makePatEnv (x:xs) i = let (env, j) = patternVars x i
                           (res, n) = makePatEnv xs j in
                         (env:res, n)
 
+isAtom (Const x) = True
+isAtom (Var _) = True
+isAtom _ = False
+
+getName (Const x) = x
+getName (Var x) = x
+getName _ = error "from get Name"
 -- Postion encoding scheme:
 -- App 0 1
 -- Lambda 0 1
@@ -207,9 +214,8 @@ transit (Res pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
     pf' = replace pf pos newCase
   in [(Res pf' (newEnv++phi) Nothing j)]
 
--- there is a forall problem
-
-transit (Res pf ((Phi pos goal@(Forall x y) (Var z) gamma lvars):phi) Nothing i) =
+   
+transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) | isAtom exp =
   let (vars, imp) = getVars goal
       lv = length vars
       absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
@@ -218,6 +224,7 @@ transit (Res pf ((Phi pos goal@(Forall x y) (Var z) gamma lvars):phi) Nothing i)
       newAbs = foldr (\ a b -> Lambda (Var a) b) imp' absNames
       pf' = replace pf pos newAbs
       pos' = pos ++ take lv stream1
+      z = getName exp
   in case lookup z gamma of
        Nothing -> let m' = Just $ text "can't find" <+> text z
                            <+> text "in the environment" in
@@ -242,7 +249,7 @@ transit (Res pf ((Phi pos goal@(Forall x y) (Var z) gamma lvars):phi) Nothing i)
                                  (nest 2 $ text "the current mixed proof term:" $$
                                   nest 2 (disp pf))
                           m1 = m' $$ nest 2 mess in
-                              [Res pf ((Phi pos goal (Var z) gamma lvars):phi) (Just m1) i]
+                              [Res pf ((Phi pos goal exp gamma lvars):phi) (Just m1) i]
            else let mess = text "scope error when matching" <+> disp (exy) $$
                            text "against"<+> disp (goal)$$
                            (nest 2 (text "when applying" <+> text z <+> text ":"
@@ -253,8 +260,10 @@ transit (Res pf ((Phi pos goal@(Forall x y) (Var z) gamma lvars):phi) Nothing i)
                              nest 2 (hsep $ map text lvars)) $$
                            (nest 2 $ text "the current mixed proof term:" $$
                              nest 2 (disp pf))
-                in [Res pf ((Phi pos goal (Var z) gamma lvars):phi) (Just mess) i]
-       _ -> [(Res pf' ((Phi pos' imp' (Var z) gamma (lvars++ absNames)):phi) Nothing (i+lv))]
+                in [Res pf ((Phi pos goal exp gamma lvars):phi) (Just mess) i]
+       _ ->
+
+         [(Res pf' ((Phi pos' imp' exp gamma (lvars++ absNames)):phi) Nothing (i+lv))]
                    
 
 transit (Res pf ((Phi pos goal@(Forall x y) exp@(Lambda _ _) gamma lvars):phi) Nothing i) =
