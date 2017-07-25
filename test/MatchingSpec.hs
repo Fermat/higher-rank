@@ -59,3 +59,6 @@ exp15 = Forall "z" $ App (Const "F") (App (Var "x") (Var "z"))
 exp16 = Forall "z" $ App (Var "x")  (App (Const "F") (Var "z"))
 test1 = runMatch exp14 (Const "C")
 
+exp17 = App (Var "x") (App (Var "y") (Const "C"))
+exp18 = App (Const "Term") (App (Const "Tree") (App (Const "List") (Const "C")))
+
