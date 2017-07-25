@@ -17,6 +17,24 @@ import qualified Data.Set as S
 
 -- runMatch run the matching function, and postprocess the results by removing
 -- duplications and unused substitutions for generated variables.
+
+convert :: Exp -> Exp
+convert (Imply x y) = App (App (Const "(->)") (convert x)) (convert y)
+convert Star = Star
+convert a@(Var _) = a
+convert a@(Const _) = a
+convert (App x y) = App (convert x) (convert y)
+convert (Forall x e) = Forall x (convert e)
+
+invert Star = Star
+invert a@(Var _) = a
+invert a@(Const _) = a
+invert (Forall x e) = Forall x (invert e)
+invert (Lambda x e) = Lambda x (invert e)
+invert (App (App (Const "(->)") x) y) = Imply (invert x) (invert y)
+invert (App x y) = App (invert x) (invert y)
+
+
 runMatch e1 e2 = let subs = evalState (match e1 e2) 0
                      fvs = freeVar e1 `S.union` freeVar e2
                      subs' = [ s'  | Subst s <- subs,
@@ -25,7 +43,16 @@ runMatch e1 e2 = let subs = evalState (match e1 e2) 0
                      subs''' = map (Subst . S.toList) subs'' 
                              
   in subs'''
-                   
+
+runMatch' e1 e2 = let subs = evalState (match (convert e1) (convert e2)) 0
+                      fvs = freeVar e1 `S.union` freeVar e2
+                      subs' = [ s'  | Subst s <- subs,
+                               let s' = [ (x, invert e) | (x, e) <- s, x `S.member` fvs]]
+                      subs'' = nub $ map S.fromList subs'
+                      subs''' = map (Subst . S.toList) subs'' 
+                             
+                  in subs'''
+     
 match :: Exp -> Exp -> State Int [Subst]
 match Star Star = return [Subst []]
 match (Var x) e | (Var x) == e = return $ [Subst [(x, e)]]
