@@ -1,7 +1,7 @@
 module Syntax where
 
 -- import Control.Monad.State.Lazy
--- import Control.Monad.Reader
+import Control.Monad.Reader
 
 import Data.Char
 import qualified Data.Set as S
@@ -73,6 +73,9 @@ apply s (App f1 f2) = App (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply (minus s [x]) f2)
 apply s (Lambda x f2) = Lambda x (apply (minus s (freeVars x)) f2)
+-- apply s (Forall x f2) = Forall x (apply s f2)
+-- apply s (Lambda x f2) = Lambda x (apply s f2)
+
 apply s Star = Star
 apply s (Case e cons) = Case (apply s e) cons'
   where cons' = map (\(p,exp) -> (apply s p, apply s exp)) cons
@@ -109,6 +112,53 @@ norm (Forall x t) = Forall x (norm t)
 norm (Case e alts) = Case (norm e) alts'
   where alts' = map (\(p, exp) -> (p, norm exp)) alts
 
+data Nameless = V Int
+              | C Name
+              | ALL Nameless
+              | AP Nameless Nameless
+              | IMP Nameless Nameless
+              | LAM Nameless
+             deriving (Show, Eq)
+
+type BindCxt a = Reader [(Name, Int)] a
+
+-- debruijn representation of type 
+debruijn :: Exp -> BindCxt Nameless
+debruijn (Const x) = return $ C x
+
+debruijn (Var x) = do
+  n' <- asks (lookup x)
+  case n' of
+    Just n -> return $ V n
+    Nothing -> error $ show x ++ "from debruijn"
+
+
+debruijn (Forall x f) = do 
+  a <- local (((x,0):) . plus1) $ debruijn f 
+  return $ ALL a
+  
+debruijn (App b1 b2) = do
+  a <- debruijn b1
+  a1 <- debruijn b2
+  return $ AP a a1
+
+debruijn (Imply b1 b2) = do
+  a <- debruijn b1
+  a1 <- debruijn b2
+  return $ IMP a a1
+
+debruijn (Lambda (Var x) f) = do
+  a <- local (((x,0):) . plus1) $ debruijn f 
+  return $ LAM a
+
+plus1 = map $ \(x, y) -> (x, y + 1)
+
+-- alphaEq of two type
+alphaEq :: Exp -> Exp -> Bool
+alphaEq t1 t2 =
+    let t1' = foldl' (\t x -> Forall x t) t1 (freeVars t1)
+        t2' = foldl' (\t x -> Forall x t) t2 (freeVars t2) in
+    runReader (debruijn t1') [] == runReader (debruijn t2') []
 
 {-
 getHead a = head $ flatten a
@@ -139,45 +189,6 @@ rebind (Abs x t) = Abs x (rebind t)
 rebind (Forall x t) = Forall x (rebind t)
 rebind a = error $ show a
   
-type BindCxt a = Reader [(Name, Int)] a
-
--- debruijn representation of type 
-debruijn :: Exp -> BindCxt Nameless
-debruijn (Const x) = return $ C x
-
-debruijn (Var x) = do
-  n' <- asks (lookup x)
-  case n' of
-    Just n -> return $ V n
-    Nothing -> error $ show x ++ "what"
-
-
-debruijn (Forall x f) = do 
-  a <- local (((x,0):) . plus1) $ debruijn f 
-  return $ ALL a
-  
-debruijn (Imply f1 f2) = do
-  a1 <- debruijn f1
-  a2 <- debruijn f2
-  return $ IMP a1 a2
-
-debruijn (PApp b1 b2) = do
-  a <- debruijn b1
-  a1 <- debruijn b2
-  return $ AP a a1
-
-debruijn (Abs x f) = do
-  a <- local (((x,0):) . plus1) $ debruijn f 
-  return $ LAM a
-
-plus1 = map $ \(x, y) -> (x, y + 1)
-
--- alphaEq of two type
-alphaEq :: Exp -> Exp -> Bool
-alphaEq t1 t2 =
-    let t1' = foldl' (\t x -> Forall x t) t1 (free t1)
-        t2' = foldl' (\t x -> Forall x t) t2 (free t2) in
-    runReader (debruijn t1') [] == runReader (debruijn t2') []
 
 
 

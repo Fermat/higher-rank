@@ -19,7 +19,7 @@ import qualified Data.Set as S
 -- duplications and unused substitutions for generated variables.
 
 convert :: Exp -> Exp
-convert (Imply x y) = App (App (Const "(->)") (convert x)) (convert y)
+convert (Imply x y) = App (App (Const "->") (convert x)) (convert y)
 convert Star = Star
 convert a@(Var _) = a
 convert a@(Const _) = a
@@ -31,7 +31,7 @@ invert a@(Var _) = a
 invert a@(Const _) = a
 invert (Forall x e) = Forall x (invert e)
 invert (Lambda x e) = Lambda x (invert e)
-invert (App (App (Const "(->)") x) y) = Imply (invert x) (invert y)
+invert (App (App (Const "->") x) y) = Imply (invert x) (invert y)
 invert (App x y) = App (invert x) (invert y)
 
 
@@ -46,13 +46,29 @@ runMatch e1 e2 = let subs = evalState (match e1 e2) 0
 
 runMatch' e1 e2 = let subs = evalState (match (convert e1) (convert e2)) 0
                       fvs = freeVar e1 `S.union` freeVar e2
-                      subs' = [ s'  | Subst s <- subs,
-                               let s' = [ (x, invert e) | (x, e) <- s, x `S.member` fvs]]
+                      subs' = [ s'  | Subst s <- subs, agree s, 
+                                     let s' = [(x, invert e) | (x, e) <- s, x `S.member` fvs]]
                       subs'' = nub $ map S.fromList subs'
                       subs''' = map (Subst . S.toList) subs'' 
                              
                   in subs'''
-     
+
+runMatch'' e1 e2 = let subs = evalState (match (convert e1) (convert e2)) 0
+                       fvs = freeVar e1 `S.union` freeVar e2
+                       subs' = [ s'  | Subst s <- subs,
+                                 let s' = [ (x, invert e) | (x, e) <- s]]
+                       subs'' = nub $ map S.fromList subs'
+                       subs''' = map (Subst . S.toList) subs'' 
+                             
+                  in subs'''
+
+agree :: [(Name, Exp)] -> Bool
+agree  s = let xs = [(x, e) | (x, e) <- s, let a = filter (\ (y, e') -> y == x) s,
+                                                      all (\ (x', e'') -> e `alphaEq` e'') a]
+           in length s == length xs 
+  
+
+  
 match :: Exp -> Exp -> State Int [Subst]
 match Star Star = return [Subst []]
 match (Var x) e | (Var x) == e = return $ [Subst [(x, e)]]
