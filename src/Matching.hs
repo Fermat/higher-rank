@@ -8,6 +8,7 @@ import Control.Monad.State.Lazy
 import Control.Monad.Except
 import Data.List
 import qualified Data.Set as S
+import Debug.Trace
 -- As we have second-order matching, the state will be a list of
 -- all possible success substitutions
 -- list of success pattern, [] indicates failure, identity sub for free var is x |-> x.
@@ -70,6 +71,7 @@ agree  s = let xs = [(x, e) | (x, e) <- s, let a = filter (\ (y, e') -> y == x) 
 
   
 match :: Exp -> Exp -> State Int [Subst]
+-- match e1 e2 | trace ("\n matching " ++ show (disp e1) ++"\n" ++ show (disp e2)) False = undefined
 match Star Star = return [Subst []]
 match (Var x) e | (Var x) == e = return $ [Subst [(x, e)]]
                 | x `elem` freeVars e = return []
@@ -95,14 +97,16 @@ match e (Var x) | (Var x) == e = return [Subst [(x, e)]]
                 | otherwise = return [Subst [(x, e)]]
 
 -- rigid-rigid
+-- has bug
 match e1 e2 | (Const x):xs <- flatten e1,
               (Const y):ys <- flatten e2,
               x == y,
               length xs == length ys =
                 foldM (\ x (a, b) ->
-                          do{s' <- mapM (\ sub -> match (apply sub a) (apply sub b)) x;
-                             return $ concat [map (\ y -> extend y sub) subs
-                                             | sub <- x, subs <- s']})
+                          do{s' <- mapM (\ sub ->
+                                            match (normalize $ apply sub a) (normalize $ apply sub b)) x;
+                             return $ concat [map (\ y -> extend y sub') subs
+                                             | sub' <- x, subs <- s']})
                 [Subst []] (zip xs ys)
 
 -- first-order simp
