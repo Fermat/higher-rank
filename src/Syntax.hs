@@ -86,6 +86,7 @@ minus :: Subst -> [Name] -> Subst
 minus (Subst sub) x = Subst [(y, e) | (y, e) <- sub, not $ y `elem` x]
 
 extend :: Subst -> Subst -> Subst
+-- extend (Subst s1) (Subst s2) = Subst $ s2 ++ s1
 extend (Subst s1) (Subst s2) = Subst $ [(x, normalize $ apply (Subst s1) e) | (x, e) <- s2] ++ s1
 
 

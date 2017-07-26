@@ -318,7 +318,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
 
         app2 fresh head'' body'' f v xs i' n =
           let newHead = reImp (drop n body'') head''
-              ss = runMatch newHead goal in
+              ss = runMatch' newHead goal in
             case ss of
               [] ->
                 let m' = Just $ text "from app2, can't match" <+> disp newHead $$
@@ -390,7 +390,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
         app1 fresh head'' body'' f v xs j i' =
           let glVars = map (\ i -> Var $ "y"++show i++"'") [i'..j-1]
               goal' = reImp glVars goal
-              ss = runMatch head'' goal' in
+              ss = runMatch' head'' goal' in
             case ss of
               [] ->
                 let m' = Just $ text "from app1, can't match" <+> disp head'' $$

@@ -55,7 +55,7 @@ runMatch' e1 e2 = let subs = evalState (match (convert e1) (convert e2)) 0
 
 runMatch'' e1 e2 = let subs = evalState (match (convert e1) (convert e2)) 0
                        fvs = freeVar e1 `S.union` freeVar e2
-                       subs' = [ s'  | Subst s <- subs,
+                       subs' = [ s'  | Subst s <- subs, agree s,
                                  let s' = [ (x, invert e) | (x, e) <- s]]
                        subs'' = nub $ map S.fromList subs'
                        subs''' = map (Subst . S.toList) subs'' 
@@ -119,7 +119,7 @@ match e1 e2 | (Var x):xs <- flatten e1,
 -- exchange
 match e1 e2 | (Const x):xs <- flatten e1, (Var z):ys <- flatten e2   = match e2 e1
 
--- rigid-flexible 
+-- rigid-flexible, 
 match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
               (Var x) /= y  =
               do
