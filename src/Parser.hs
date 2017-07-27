@@ -107,7 +107,7 @@ atomType = do
   as <- many $ indented >> arg
   return $ foldl' (\ z x -> App z x) n as 
 
-arg =  (try con <|> try var <|> try (parens atomType))
+arg =  (try con <|> try var <|> try (parens ty))
 
 forall = do
   reserved "forall"

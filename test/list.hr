@@ -14,15 +14,19 @@ data Nat :: * where
 
 data Pair :: * -> * -> * where
   Pair :: forall a b . a -> b -> Pair a b
+
+data Maybe :: * -> * where
+  Nothing :: forall a . Maybe a
+  Just :: forall a . a -> Maybe a
   
 -- map :: forall a b . (a -> b) -> List a -> List b
 -- map f Nil = Nil
 -- map f (Cons x xs) = Cons (f x) (map f xs)
 
-map' :: forall a b . (a -> b) -> List a -> List b
-map' f l = case l of
-       	   	Nil -> Nil
-		Cons x xs -> Cons (f x) (map' f xs)
+-- map' :: forall a b . (a -> b) -> List a -> List b
+-- map' f l = case l of
+--        	   	Nil -> Nil
+-- 		Cons x xs -> Cons (f x) (map' f xs)
 
 revapp :: forall a b . a -> (a -> b) -> b
 revapp x f = f x
@@ -41,8 +45,14 @@ f x = Pair (x (Cons True (Cons False Nil))) (x (Cons Z (Cons (S Z) Nil)))
 
 
 
+g :: (forall a . List a -> a) -> Pair Nat Bool
+g get = Pair (get (Cons Z Nil)) (get (Cons True Nil))
 
+g' :: Maybe (forall a . List a -> a) -> Pair Nat Bool
+g' Nothing = Pair Z False
+g' (Just get) = Pair (get (Cons Z Nil)) (get (Cons True Nil))
 
-
+-- l :: Nat
+-- l = id id Z
 
 

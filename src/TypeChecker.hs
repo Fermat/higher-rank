@@ -300,6 +300,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                           l = length body
                       in
                         if l <= n then let j = i' + (n-l) in
+--                          error $ "in app1" ++ show goal ++ show (disp pf)
                                          app1 fresh head'' body'' f v xs j i' 
                         else if l > n then
                                app2 fresh head'' body'' f v xs i' n
