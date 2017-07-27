@@ -100,13 +100,12 @@ match e (Var x) | (Var x) == e = return [Subst [(x, e)]]
 -- has bug
 match e1 e2 | (Const x):xs <- flatten e1,
               (Const y):ys <- flatten e2,
-              x == y,
-              length xs == length ys =
+              x == y, length xs == length ys =
                 foldM (\ x (a, b) ->
                           do{s' <- mapM (\ sub ->
                                             match (normalize $ apply sub a) (normalize $ apply sub b)) x;
                              return $ concat [map (\ y -> extend y sub') subs
-                                             | sub' <- x, subs <- s']})
+                                             | (sub', subs) <- zip x s']})
                 [Subst []] (zip xs ys)
 
 -- first-order simp
@@ -116,8 +115,8 @@ match e1 e2 | (Var x):xs <- flatten e1,
               length xs == length ys =
                 foldM (\ x (a, b) ->
                           do{s' <- mapM (\ sub -> match (apply sub a) (apply sub b)) x;
-                             return $ concat [map (\ y -> extend y sub) subs
-                                             | sub <- x, subs <- s']})
+                             return $ concat [map (\ y -> extend y sub') subs
+                                             | (sub', subs) <- zip x s']})
                 [Subst []] (zip xs ys)
 
 -- exchange

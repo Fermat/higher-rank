@@ -62,7 +62,7 @@ test1 = runMatch exp14 (Const "C")
 exp17 = App (Var "f") (App (Var "g") (Const "String"))
 exp19 = Const "String"
 exp20 = (App (Var "g") (Const "String"))
-exp18 =  (Imply (Const "List") (Imply (Const "Int") (Const "String")))
+exp18 =  (Imply (Const "String") (Imply (Const "Int") (Const "String")))
 test2 = map disp $ runMatch' (exp17) exp18
 test3 = map disp $ runMatch'' (exp17) exp18
 -- minimal test case for matching.
