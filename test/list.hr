@@ -52,7 +52,11 @@ g' :: Maybe (forall a . List a -> a) -> Pair Nat Bool
 g' Nothing = Pair Z False
 g' (Just get) = Pair (get (Cons Z Nil)) (get (Cons True Nil))
 
--- l :: Nat
--- l = id id Z
+l :: Nat
+l = id id Z
+
+l' :: forall a . a -> a
+l' x = id id id x
+-- l' = id id id id id id id id id id id id id 
 
 

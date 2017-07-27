@@ -390,6 +390,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
           
         app1 fresh head'' body'' f v xs j i' =
           let glVars = map (\ i -> Var $ "y"++show i++"'") [i'..j-1]
+              glVars' = map (\ i -> "y"++show i++"'") [i'..j-1]
               goal' = reImp glVars goal
               ss = runMatch' head'' goal' in
             case ss of
@@ -417,7 +418,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                                 Nothing -> (Var r)
                                                 Just t -> t])
                               lvars' = (lvars \\ (map fst sub)) ++
-                                       [ x | x <- fresh, not (x `elem` dom)]
+                                       [ x | x <- fresh, not (x `elem` dom)] -- ++ glVars'
                               name = if isUpper $ Data.List.head v
                                      then Const v else Var v
                               contm = foldl' (\ z x -> App z x)
