@@ -129,7 +129,7 @@ scopeCheck :: [Name] -> [(Name, Exp)] -> Bool
 scopeCheck lvars sub = let (sub1, sub2) = partition (\(x, t) -> x `elem` lvars) sub
                            r1 = and [ null (rvars `intersect` b) | (x, t) <- sub1,
                                       let (a, b) = break (== x) lvars, let rvars = free' t]
---                           r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvars]
+                         --  r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvars]
                        in r1 -- && r2
 
 
@@ -418,7 +418,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                                 Nothing -> (Var r)
                                                 Just t -> t])
                               lvars' = (lvars \\ (map fst sub)) ++
-                                       [ x | x <- fresh, not (x `elem` dom)] -- ++ glVars'
+                                       [ x | x <- fresh, not (x `elem` dom)] ++ glVars'
                               name = if isUpper $ Data.List.head v
                                      then Const v else Var v
                               contm = foldl' (\ z x -> App z x)
