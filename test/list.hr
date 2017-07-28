@@ -56,7 +56,7 @@ l :: Nat
 l = id id Z
 
 l' :: forall a . a -> a
-l' x = id id id x
--- l' = id id id id id id id id id id id id id 
+-- l' x = id id id id id x
+l' = id id id id id id id id id id id id id 
 
 

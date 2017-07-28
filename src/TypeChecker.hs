@@ -213,7 +213,8 @@ transit (Res pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
     len = length alts
     (thetas, j) = makePatEnv pats (i+1)
     newlvars = y : map (\(Var x) -> x) (map snd $ concat thetas)
-    lvars' = lvars++newlvars
+    newlvars' = zip newlvars [getValue lvars ..]
+    lvars' = lvars++newlvars'
     posLeft =  map (\ p -> pos++[1, p, 0]) [0..(len-1)]
     posRight = map (\ p -> pos++[1, p, 1]) [0..(len-1)]
     leftEnv = map (\(po, (p, th)) -> (Phi po (Var y) p (th++gamma) lvars')) $
@@ -231,6 +232,7 @@ transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) | i
   let (vars, imp) = getVars goal
       lv = length vars
       absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
+      absVars = zip absNames [getValue lvars ..]
       sub = zip vars (map Const absNames)
       imp' = apply (Subst sub) imp
       newAbs = foldr (\ a b -> Lambda (Var a) b) imp' absNames
@@ -257,7 +259,7 @@ transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) | i
                                  (nest 2 (text "when applying substitution"
                                            <+> text "[" <+> disp sub' <+> text "]")) $$
                                  (nest 2 $ text "current variables list:" $$
-                                   nest 2 (hsep $ map text lvars)) $$
+                                   nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
                                  (nest 2 $ text "the current mixed proof term:" $$
                                   nest 2 (disp pf))
                           m1 = m' $$ nest 2 mess in
@@ -269,25 +271,26 @@ transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) | i
                            (nest 2 (text "when applying substitution" <+> text "["
                                      <+> disp sub' <+> text "]")) $$
                            (nest 2 $ text "current variables list:" $$
-                             nest 2 (hsep $ map text lvars)) $$
+                             nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
                            (nest 2 $ text "the current mixed proof term:" $$
                              nest 2 (disp pf))
                 in [Res pf ((Phi pos goal exp gamma lvars):phi) (Just mess) i]
        _ ->
 
-         [(Res pf' ((Phi pos' imp' exp gamma (lvars++ absNames)):phi) Nothing (i+lv))]
+         [(Res pf' ((Phi pos' imp' exp gamma (lvars++ absVars)):phi) Nothing (i+lv))]
                    
 
 transit (Res pf ((Phi pos goal@(Forall x y) exp@(Lambda _ _) gamma lvars):phi) Nothing i) =
   let (vars, imp) = getVars goal
       lv = length vars
       absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
+      absVars = zip absNames [getValue lvars ..]
       sub = zip vars (map Const absNames)
       imp' = apply (Subst sub) imp
       newAbs = foldr (\ a b -> Lambda (Var a) b) imp' absNames
       pf' = replace pf pos newAbs
       pos' = pos ++ take lv stream1
-  in [(Res pf' ((Phi pos' imp' exp gamma (lvars++ absNames)):phi) Nothing (i+lv))]
+  in [(Res pf' ((Phi pos' imp' exp gamma (lvars++ absVars)):phi) Nothing (i+lv))]
 
 
 transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) = 
@@ -351,8 +354,9 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                       let s = case lookup r sub of
                                                 Nothing -> (Var r)
                                                 Just t -> t])
-                              lvars' = (lvars \\ (map fst sub)) ++
-                                       [ x | x <- fresh, not (x `elem` dom)]
+                              lvars1 = filter (\(x, i) -> not $ x `elem` map fst sub) lvars
+                              lvars' = lvars1 ++ zip [x | x <- fresh, not (x `elem` dom)]
+                                                 [getValue lvars1 ..]
                               name = if isUpper $ Data.List.head v
                                      then Const v else Var v
                               contm = foldl' (\ z x -> App z x)
@@ -380,7 +384,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                            (nest 2 (text "when applying substitution"
                                                     <+> text "[" <+> disp sub <+> text "]")) $$
                                            (nest 2 $ text "current variables list:" $$
-                                            nest 2 (hsep $ map text lvars)) $$
+                                            nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
                                            (nest 2 $ text "the current mixed proof term:" $$
                                             nest 2 (disp pf))
                                            
@@ -393,7 +397,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                      (nest 2 (text "when applying substitution" <+> text "["
                                                <+> disp sub <+> text "]")) $$
                                      (nest 2 $ text "current variables list:" $$
-                                      nest 2 (hsep $ map text lvars)) $$
+                                      nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
                                      (nest 2 $ text "the current mixed proof term:" $$
                                       nest 2 (disp pf))
                                                     
@@ -429,8 +433,11 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                       let s = case lookup r sub of
                                                 Nothing -> (Var r)
                                                 Just t -> t])
-                              lvars' = (lvars \\ (map fst sub)) ++
-                                       [ x | x <- fresh, not (x `elem` dom)] ++ glVars'
+                              lvars1 = filter (\(x, i) -> not $ x `elem` map fst sub) lvars
+                              lvars'' = lvars1 ++ zip [x | x <- fresh, not (x `elem` dom)]
+                                                     [getValue lvars1 ..]
+                              va = getValue lvars''          
+                              lvars' = lvars'' ++ map (\x -> (x, va)) glVars'
                               name = if isUpper $ Data.List.head v
                                      then Const v else Var v
                               contm = foldl' (\ z x -> App z x)
@@ -459,7 +466,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                            (nest 2 (text "when applying substitution"
                                                     <+> text "[" <+> disp sub <+> text "]")) $$
                                            (nest 2 $ text "current variables list:" $$
-                                            nest 2 (hsep $ map text lvars)) $$
+                                            nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
                                            (nest 2 $ text "the current mixed proof term:" $$
                                             nest 2 (disp pf))
                                            
@@ -473,7 +480,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                      (nest 2 (text "when applying substitution" <+> text "["
                                                <+> disp sub <+> text "]")) $$
                                      (nest 2 $ text "current variables list:" $$
-                                      nest 2 (hsep $ map text lvars)) $$
+                                      nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
                                      (nest 2 $ text "the current mixed proof term:" $$
                                       nest 2 (disp pf))
                                                     
