@@ -79,7 +79,8 @@ apply s (Lambda x f2) = Lambda x (apply (minus s (freeVars x)) f2)
 apply s Star = Star
 apply s (Case e cons) = Case (apply s e) cons'
   where cons' = map (\(p,exp) -> (apply s p, apply s exp)) cons
-  
+apply s (Let defs e) = Let def' (apply s e)
+  where def' = map (\(p, exp) -> (apply s p, apply s exp)) defs
 apply s e = error $ show e ++ "from apply"
 
 minus :: Subst -> [Name] -> Subst
@@ -111,6 +112,9 @@ norm (App t' t) =
 norm (Imply t t') = Imply (norm t) (norm t')
 norm (Forall x t) = Forall x (norm t)
 norm (Case e alts) = Case (norm e) alts'
+  where alts' = map (\(p, exp) -> (p, norm exp)) alts
+
+norm (Let alts e) = Let alts' (norm e) 
   where alts' = map (\(p, exp) -> (p, norm exp)) alts
 
 data Nameless = V Int

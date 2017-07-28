@@ -56,7 +56,15 @@ l :: Nat
 l = id id Z
 
 l' :: forall a . a -> a
--- l' x = id id id id id x
-l' = id id id id id id id id id id id id id 
+l' x = id id id x
+-- l' = id id id id id id id id id id id id id 
 
+reverse :: forall a . List a -> List a
+reverse = id
 
+-- foo :: Pair (List Bool) (List Nat)
+-- foo = let f = \ x -> Pair (x (Cons True Nil)) (x (Cons Z Nil))
+--       in f reverse
+
+-- id' :: Pair Bool Nat
+-- id' = let x = \ y -> y in Pair (x True) (x Z)
