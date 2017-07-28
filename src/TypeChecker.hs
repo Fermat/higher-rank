@@ -303,18 +303,24 @@ transit (Res pf ((Phi pos goal exp@(Let defs e) gamma lvars):phi) Nothing i) =
       defends = map snd defs
       (thetas, j) = makePatEnv pats i
       len = length pats
+      j' = j + len
+      tyvars = map (\ x -> "y"++show x ++ "'") [j.. (j'-1)]
+      tyvars' = map Var tyvars
       n = getValue lvars
-      newlvars =  map (\(Var x) -> x) (map snd $ concat thetas)
-      lvars' = lvars++ zip newlvars []
+      tyvarsind = map (\ x -> (x, n)) tyvars
+      newlvars =  map (\(Var x) -> (x, n)) (map snd $ concat thetas)
+      lvars' = lvars++ tyvarsind ++ newlvars 
       posLeft =  map (\ p -> pos++[0, p, 0]) [0..(len-1)]
       posRight = map (\ p -> pos++[0, p, 1]) [0..(len-1)]
-      leftEnv = map (\(po, (p, th)) -> (Phi po (Var y) p (th++gamma) lvars')) $
-                zip posLeft (zip pats thetas)
-      rightEnv = map (\(po, (e', th)) -> (Phi po goal e' (th++gamma) lvars')) $
-                 zip posRight (zip defends thetas)
+      leftEnv = map (\(y , (po, p)) -> (Phi po y p (concat thetas++gamma) lvars')) $
+                zip tyvars' $ zip posLeft pats 
+      rightEnv = map (\(y, (po, e')) -> (Phi po y e' (concat thetas++gamma) lvars')) $
+                 zip tyvars' $ zip posRight defends 
       defsEnv =  leftEnv ++ rightEnv
-
-
+      newEnv = (Phi (pos++[1]) goal e (concat thetas ++gamma) lvars'):defsEnv
+      newLet = Let (map (\ x -> (x, x)) tyvars') goal 
+      pf' = replace pf pos newLet
+  in [(Res pf' (newEnv++phi) Nothing j')]
 
 
 transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) = 
