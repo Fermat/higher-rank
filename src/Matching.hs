@@ -73,7 +73,7 @@ agree  s = let xs = [(x, e) | (x, e) <- s, let a = filter (\ (y, e') -> y == x) 
 match :: Exp -> Exp -> State Int [Subst]
 -- match e1 e2 | trace ("\n matching " ++ show (disp e1) ++"\n" ++ show (disp e2)) False = undefined
 match Star Star = return [Subst []]
-match (Var x) e | (Var x) == e = return $ [Subst [(x, e)]]
+match (Var x) e | (Var x) == e = return $ [Subst []]
                 | x `elem` freeVars e = return []
                 | otherwise = return $ [Subst [(x, e)]]
 
@@ -92,7 +92,7 @@ match (Forall x e) (Forall y e') = let e1 = apply (Subst [(x, Const x)]) e
                                         return res
                                           
 
-match e (Var x) | (Var x) == e = return [Subst [(x, e)]]
+match e (Var x) | (Var x) == e = return [Subst []]
                 | x `elem` freeVars e = return []
                 | otherwise = return [Subst [(x, e)]]
 
@@ -120,7 +120,7 @@ match e1 e2 | (Var x):xs <- flatten e1,
                 [Subst []] (zip xs ys)
 
 -- exchange
-match e1 e2 | (Const x):xs <- flatten e1, (Var z):ys <- flatten e2   = match e2 e1
+match e1 e2 | (Const x):xs <- flatten e1, (Var z):ys <- flatten e2  = match e2 e1
 
 -- rigid-flexible, 
 match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
