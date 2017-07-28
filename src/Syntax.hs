@@ -127,6 +127,7 @@ data Nameless = V Int
 
 type BindCxt a = Reader [(Name, Int)] a
 
+         
 -- debruijn representation of type 
 debruijn :: Exp -> BindCxt Nameless
 debruijn (Const x) = return $ C x
