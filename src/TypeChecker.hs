@@ -37,7 +37,7 @@ data Phi = Phi{
               currentGoal :: Exp,
               currentProg :: Exp,
               env :: TyEnv,
-              scope :: [Name] }
+              scope :: [(Name, Int)] }
            deriving (Show)
 
 -- Resolution state
@@ -125,31 +125,41 @@ makeZeros 0 = []
 makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
 -- removing the notion of global existential variables
-scopeCheck :: [Name] -> [(Name, Exp)] -> Bool
-scopeCheck lvars sub = let (sub1, sub2) = partition (\(x, t) -> x `elem` lvars) sub
-                           r1 = and [ null (rvars `intersect` b) | (x, t) <- sub1,
-                                      let (a, b) = break (== x) lvars, let rvars = free' t]
+scopeCheck :: [(Name, Int)] -> [(Name, Exp)] -> Bool
+scopeCheck lvars sub = let (sub1, sub2) = partition (\(x, t) -> x `elem` map fst lvars) sub
+                           r1 = and [ helper rvars b n | (x, t) <- sub1,
+                                      let (a, b) = break (\ z -> fst z == x) lvars,
+                                      let Just n = lookup x lvars,
+                                      let rvars = free' t]
+                       in r1 -- && r2                                      
                          --  r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvars]
-                       in r1 -- && r2
 
-
+         where helper (x:l) b n = case lookup x b of
+                                     Nothing -> helper l b n
+                                     Just n' -> if n' > n then False else helper l b n
+               helper [] b n = True
 applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
 applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <- ls]
                       ls' = map (\(Phi p g e env lvars) ->
                                     (Phi p (normalize $ apply (Subst sub) g) e
                                       (map (\ (x, t) -> (x, normalize $ apply (Subst sub) t))
                                        env)
-                                     (lvars \\ map fst sub))) ls
+                                     (filter (\(x,_) -> not $ x `elem` map fst sub) lvars))) ls
                   in if and $ map fst f then Right ls'
                      else let (Phi p g e env lvars):as = [ l | (b, l) <- f, not b]
                               m = (nest 2 (text "environmental scope error when applying substitution") $$
                                    nest 2 ( text "[" <+> disp sub <+> text "]")) $$
                                   (nest 2 $ text "local variables list:" $$
-                                   nest 2 (hsep $ map text lvars)) $$
+                                   nest 2 (hsep $ map (\ (x, i) -> parens $ text x <+> text ","
+                                                        <+> int i) lvars)) $$
                                   (nest 2 $ text "the local goal:" $$ nest 2 (disp g)) $$
                                   (nest 2 $ text "the local expression:" $$ nest 2 (disp e))
                           in Left m
 
+
+getValue :: [(Name, Int)] -> Int
+getValue [] = 1
+getValue xs = (snd $ last xs)+1
 
 arrange :: [((Pos, Exp), Exp)] -> ([((Pos, Exp), Exp)], [((Pos, Exp), Exp)])
 arrange ls =  partition helper ls
@@ -166,12 +176,13 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
       len = length vars
       lenB = length bs
   in
-    if len > length bs then
+    if len > lenB then
       let vars' = take lenB vars
           b' = reLam (drop lenB vars) b
           (thetas, j) = makePatEnv vars' i
           newlvars = map snd $ concat thetas
-          lvars' = lvars++(map (\ (Var x) -> x) newlvars)
+          indlvars = zip (map (\ (Var x) -> x) newlvars) [getValue lvars ..]
+          lvars' = lvars++ indlvars
           positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes lenB)
           pairs = zip (zip (zip positionsVars bs) vars') thetas
           newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars')) pairs
@@ -182,7 +193,8 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
       in [(Res pf' (newEnv' ++ phi) Nothing j)]
     else let (thetas, j) = makePatEnv vars i
              newlvars = map snd $ concat thetas
-             lvars' = lvars++(map (\ (Var x) -> x) newlvars)
+             indvars = zip (map (\ (Var x) -> x) newlvars) [getValue lvars ..]
+             lvars' = lvars++indvars
              h' = reImp (drop len bs) h  
              positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes len)
              pairs = zip (zip (zip positionsVars bs) vars) thetas
