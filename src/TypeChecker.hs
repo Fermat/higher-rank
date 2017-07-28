@@ -327,7 +327,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
   case flatten exp of
     (Var v) : xs -> handle v xs
     (Const v) : xs -> handle v xs
-    a -> error $ "unhandle situation in transit " ++ show (disp exp)
+    a -> error $ "unhandle situation in transit\n " ++ "expression " ++ show (disp exp) ++ "\n goal: " ++ show (disp goal)
   where handle v xs =
           case lookup v gamma of
             Nothing -> let m' = Just $ text "can't find" <+> text v
