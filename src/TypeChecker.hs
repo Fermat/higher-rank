@@ -92,6 +92,7 @@ getName _ = error "from get Name"
 -- App 0 1
 -- Lambda 0 1
 -- Case 0 1 [(0, 0, 1), (1, 0, 1),... (n, 0, 1)]
+-- Let 0 [(0, 0, 1), (1, 0, 1)..(n, 0, 1)] 1
 
 replace :: Exp -> Pos -> Exp -> Exp
 replace e [] r = r
@@ -107,10 +108,15 @@ replace (Case e alts) (x:xs) r | x == 0 = Case (replace e xs r) alts
                                      [] -> error "internal: wrong position for case"
                                      y:y':ys -> Case e $ replaceL y y' ys alts r
 
-replaceL y y' ys [] r = error "internal: wrong position for case branch"
+replace (Let defs e) (x : xs) r | x == 1 = Let defs (replace e xs r)
+                                | x == 0 = case xs of
+                                             [] -> error "internal: wrong position for case"
+                                             y:y':ys -> Let (replaceL y y' ys defs r) e
+replaceL y y' ys [] r = error "internal: wrong position for case/let branch"
 replaceL 0 0 ys ((p,e):alts) r = ((replace p ys r), e):alts
 replaceL 0 1 ys ((p,e):alts) r = (p, (replace e ys r)):alts
 replaceL y y' ys (a:alts) r | y > 0 = a : replaceL (y-1) y' ys alts r
+
 
 isSingle (Var _) = True
 isSingle (Const _) = True
@@ -291,6 +297,24 @@ transit (Res pf ((Phi pos goal@(Forall x y) exp@(Lambda _ _) gamma lvars):phi) N
       pf' = replace pf pos newAbs
       pos' = pos ++ take lv stream1
   in [(Res pf' ((Phi pos' imp' exp gamma (lvars++ absVars)):phi) Nothing (i+lv))]
+
+transit (Res pf ((Phi pos goal exp@(Let defs e) gamma lvars):phi) Nothing i) =
+  let pats = map fst defs
+      defends = map snd defs
+      (thetas, j) = makePatEnv pats i
+      len = length pats
+      n = getValue lvars
+      newlvars =  map (\(Var x) -> x) (map snd $ concat thetas)
+      lvars' = lvars++ zip newlvars []
+      posLeft =  map (\ p -> pos++[0, p, 0]) [0..(len-1)]
+      posRight = map (\ p -> pos++[0, p, 1]) [0..(len-1)]
+      leftEnv = map (\(po, (p, th)) -> (Phi po (Var y) p (th++gamma) lvars')) $
+                zip posLeft (zip pats thetas)
+      rightEnv = map (\(po, (e', th)) -> (Phi po goal e' (th++gamma) lvars')) $
+                 zip posRight (zip defends thetas)
+      defsEnv =  leftEnv ++ rightEnv
+
+
 
 
 transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) = 
