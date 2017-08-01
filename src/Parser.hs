@@ -156,7 +156,8 @@ letExp = do
           reservedOp "="
           t <- term
           return (p, t)
-  
+
+          
 
 pat = try var <|> try con <|> parens patComp
   -- as <- patArgs

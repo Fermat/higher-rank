@@ -317,7 +317,7 @@ transit (Res pf ((Phi pos goal exp@(Let defs e) gamma lvars):phi) Nothing i) =
       rightEnv = map (\(y, (po, e')) -> (Phi po y e' (concat thetas++gamma) lvars')) $
                  zip tyvars' $ zip posRight defends 
       defsEnv =  leftEnv ++ rightEnv
-      newEnv = (Phi (pos++[1]) goal e (concat thetas ++gamma) lvars'):defsEnv
+      newEnv = defsEnv ++ [(Phi (pos++[1]) goal e (concat thetas ++gamma) lvars')]
       newLet = Let (map (\ x -> (x, x)) tyvars') goal 
       pf' = replace pf pos newLet
   in [(Res pf' (newEnv++phi) Nothing j')]
@@ -327,7 +327,14 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
   case flatten exp of
     (Var v) : xs -> handle v xs
     (Const v) : xs -> handle v xs
-    a -> error $ "unhandle situation in transit\n " ++ "expression " ++ show (disp exp) ++ "\n goal: " ++ show (disp goal)
+    a -> let m' = Just $ (text "need more information to check expression:" <+> disp exp) $$
+                         (text "current goal: " <+> disp goal) $$
+                         (nest 2 $ text "current mixed proof term" $$
+                           nest 2 (disp pf)) $$
+                         (nest 2 $ text "current env" $$
+                           nest 2 (disp gamma)) in                                
+           [(Res pf ((Phi pos goal exp gamma lvars):phi) m' i)]
+      -- error $ "unhandle situation in transit\n " ++ "expression " ++ show (disp exp) ++ "\n goal: " ++ show (disp goal)
   where handle v xs =
           case lookup v gamma of
             Nothing -> let m' = Just $ text "can't find" <+> text v
