@@ -69,6 +69,7 @@ reLam [] h = h
 reLam (x:xs) h = Lambda x (reLam xs h)
 
 patternVars :: Exp -> Int -> (TyEnv, Int)
+patternVars (Ann (Var x) t) i = ([(x, t)], i)
 patternVars p i = let fvs = freeVars p
                       j = (i+(length fvs))-1
                       ns = [i..j]
@@ -84,6 +85,9 @@ makePatEnv (x:xs) i = let (env, j) = patternVars x i
 isAtom (Const x) = True
 isAtom (Var _) = True
 isAtom _ = False
+
+isVar (Var _) = True
+isVar _ = False
 
 getName (Const x) = x
 getName (Var x) = x
@@ -172,8 +176,10 @@ arrange ls =  partition helper ls
   where helper ((p,f),e) = let (vars, h, _) = separate f
                                fr = freeVars f
                            in null (fr `intersect` (freeVars h))
+simp es = map simp' es
+simp' (Ann x _) = x
+simp' a = a
 
-                              
 transit :: ResState -> [ResState]
 -- transit state | trace ("transit " ++show (state)) False = undefined
 transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
@@ -303,17 +309,18 @@ transit (Res pf ((Phi pos goal exp@(Let defs e) gamma lvars):phi) Nothing i) =
       defends = map snd defs
       (thetas, j) = makePatEnv pats i
       len = length pats
+      pats' = simp pats
       j' = j + len
       tyvars = map (\ x -> "y"++show x ++ "'") [j.. (j'-1)]
       tyvars' = map Var tyvars
       n = getValue lvars
       tyvarsind = map (\ x -> (x, n)) tyvars
-      newlvars =  map (\(Var x) -> (x, n)) (map snd $ concat thetas)
+      newlvars =  map (\(Var x) -> (x, n)) (map snd $ filter (\ (x, e) -> isVar e) $ concat thetas)
       lvars' = lvars++ tyvarsind ++ newlvars 
       posLeft =  map (\ p -> pos++[0, p, 0]) [0..(len-1)]
       posRight = map (\ p -> pos++[0, p, 1]) [0..(len-1)]
       leftEnv = map (\(y , (po, p)) -> (Phi po y p (concat thetas++gamma) lvars')) $
-                zip tyvars' $ zip posLeft pats 
+                zip tyvars' $ zip posLeft pats' 
       rightEnv = map (\(y, (po, e')) -> (Phi po y e' (concat thetas++gamma) lvars')) $
                  zip tyvars' $ zip posRight defends 
       defsEnv =  leftEnv ++ rightEnv
