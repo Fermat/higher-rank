@@ -147,7 +147,7 @@ caseExp = do
 
 letExp = do
   reserved "let"
-  defs <- block def
+  defs <- block (try def1 <|> def)
   reserved "in"
   e <- term
   return $ Let defs e
@@ -156,7 +156,15 @@ letExp = do
           reservedOp "="
           t <- term
           return (p, t)
-
+        def1 = do
+          n <- var
+          reservedOp "::"
+          t <- ty
+          var
+          reservedOp "="
+          e <- term
+          return (Ann n t, e)
+          
           
 
 pat = try var <|> try con <|> parens patComp

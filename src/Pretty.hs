@@ -59,8 +59,8 @@ instance Disp Exp where
                  | otherwise = brackets $ disp x
   disp Star = text "*"
   disp (Var x) = disp x
-  disp (Ann (Var x) Nothing) = disp x
-  disp (Ann (Var x) (Just t)) = parens $ disp x <+> disp t
+--  disp (Ann (Var x) Nothing) = disp x
+  disp (Ann (Var x) t) = parens $ disp x <+> text "::" <+>disp t
   disp (s@(App s1 s2)) =
     sep [dParen (precedence s - 1) s1,  
          nest 2 $ dParen (precedence s) s2]

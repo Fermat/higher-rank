@@ -66,12 +66,15 @@ reverse = id
 -- foo = let f = \ x -> Pair (x (Cons True Nil)) (x (Cons Z Nil))
 --       in f reverse
 
--- id' :: Pair Bool Nat
--- id' = let x = \ y -> y
---       in Pair (x True) (x Z)
+id' :: Pair Bool Nat
+id' = let x :: forall a . a -> a
+          x = \ y -> y
+          y = id
+          z = id
+      in Pair (x True) (x Z)
       
-id' :: Nat
-id' = let x = \ y -> y in x Z
+-- id' :: Nat
+-- id' = let x = \ y -> y in x Z
 
 -- skk :: forall a b c . (a -> b -> c) -> (a -> b) -> (a -> c)
 -- skk :: forall a . (a -> b) -> (a -> a)
@@ -85,5 +88,5 @@ s = \ x y z -> x z (y z)
 k :: forall a b . a -> b -> a
 k = \ x y -> x
 
-skk :: forall a . a -> a 
-skk x = let a = s k k in a x
+skk :: forall a . a -> Nat
+skk x = let a = s k k in Z

@@ -22,7 +22,7 @@ data Exp = Var Name
          | Forall Name Exp
          | Case Exp [(Exp, Exp)]
          | Let [(Exp, Exp)] Exp
-         | Ann Exp (Maybe Exp)
+         | Ann Exp Exp
          deriving (Show, Eq, Ord)
 
 
