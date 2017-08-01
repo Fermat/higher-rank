@@ -77,16 +77,19 @@ id' = let x :: forall a . a -> a
 -- id' = let x = \ y -> y in x Z
 
 -- skk :: forall a b c . (a -> b -> c) -> (a -> b) -> (a -> c)
--- skk :: forall a . (a -> b) -> (a -> a)
--- skk = let s = \ x y z -> x z (y z)
---           k = \ x y -> x
---       in s 
 
-s :: forall a b c . (a -> b -> c) -> (a -> b) -> (a -> c)
-s = \ x y z -> x z (y z)
+skk :: forall a . (a -> a)
+skk x = let s :: forall a b c . (a -> b -> c) -> (a -> b) -> (a -> c)
+            s = \ x y z -> x z (y z)
+            k :: forall a b . a -> b -> a
+            k = \ x y -> x
+        in s k k x
 
-k :: forall a b . a -> b -> a
-k = \ x y -> x
+-- s :: forall a b c . (a -> b -> c) -> (a -> b) -> (a -> c)
+-- s = \ x y z -> x z (y z)
 
-skk :: forall a . a -> Nat
-skk x = let a = s k k in Z
+-- k :: forall a b . a -> b -> a
+-- k = \ x y -> x
+
+-- skk :: forall a . a -> Nat
+-- skk x = let a = s k k in Z
