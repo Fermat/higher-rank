@@ -19,9 +19,9 @@ data Maybe :: * -> * where
   Nothing :: forall a . Maybe a
   Just :: forall a . a -> Maybe a
   
--- map :: forall a b . (a -> b) -> List a -> List b
--- map f Nil = Nil
--- map f (Cons x xs) = Cons (f x) (map f xs)
+map :: forall a b . (a -> b) -> List a -> List b
+map f Nil = Nil
+map f (Cons x xs) = Cons (f x) (map f xs)
 
 -- map' :: forall a b . (a -> b) -> List a -> List b
 -- map' f l = case l of

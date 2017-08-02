@@ -104,7 +104,10 @@ replace (App t1 t2) (x:xs) r | x ==1 = App t1 (replace t2 xs r)
                              | x ==0 = App (replace t1 xs r) t2
 
 replace (Lambda t t2) (x:xs) r | x == 1 = Lambda t (replace t2 xs r)
-                               | x == 0 = Lambda (replace t xs r) t2
+                               | x == 0 =
+                                 case t of
+                                   Ann e ty -> Lambda (Ann (replace e xs r) ty) t2
+                                   _ -> Lambda (replace t xs r) t2
 
 replace (Case e alts) (x:xs) r | x == 0 = Case (replace e xs r) alts
                                | x == 1 =
@@ -173,9 +176,11 @@ getValue xs = (snd $ last xs)+1
 
 arrange :: [((Pos, Exp), Exp)] -> ([((Pos, Exp), Exp)], [((Pos, Exp), Exp)])
 arrange ls =  partition helper ls
-  where helper ((p,f),e) = let (vars, h, _) = separate f
-                               fr = freeVars f
-                           in null (fr `intersect` (freeVars h))
+  where helper ((p,(Var _)), (Lambda _ _)) = False
+        helper _ = True
+  -- where helper ((p,f),e) = let (vars, h, _) = separate f
+  --                              fr = freeVars f
+  --                          in null (fr `intersect` (freeVars h))
 simp es = map simp' es
 simp' (Ann x _) = x
 simp' a = a
@@ -200,7 +205,7 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
           newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars')) pairs
           boPos = pos++(take (lenB-1) stream1)++[1]
           newEnv' = newEnv ++ [(Phi boPos h b' (concat thetas ++ gamma) lvars')]
-          newLam = foldr (\ a b -> Lambda a b) h bs
+          newLam = foldr (\ a b -> Lambda (Ann a a) b) h bs
           pf' = replace pf pos newLam
       in [(Res pf' (newEnv' ++ phi) Nothing j)]
     else let (thetas, j) = makePatEnv vars i
@@ -213,7 +218,7 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
              newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars')) pairs
              boPos = pos++(take (len-1) stream1)++[1]
              newEnv' = newEnv ++ [(Phi boPos h' b (concat thetas ++ gamma) lvars')]
-             newLam = foldr (\ a b -> Lambda a b) h' (take len bs)
+             newLam = foldr (\ a b -> Lambda (Ann a a) b) h' (take len bs)
              pf' = replace pf pos newLam
          in [(Res pf' (newEnv' ++ phi) Nothing j)]
 
@@ -415,7 +420,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                           (x, normalize $ apply (Subst sub) y))
                                        gamma
                               (high, low) = arrange $ zip (zip ps body') xs
-                              (high', low') = (map (\((p, g),e ) -> (Phi p g e gamma' lvars')) high, map (\((p, g), e ) -> (Phi p g e gamma' lvars')) low)
+                              (high', low') = (map (\((p, g),e ) -> (Phi p g e gamma' lvars')) high, map (\((p, g),e ) -> (Phi p g e gamma' lvars')) low) 
                               phi' = applyPhi subFCheck phi in
                             case phi' of
                               Right p ->
@@ -496,7 +501,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                           (x, normalize $ apply (Subst sub) y))
                                        gamma
                               (high, low) = arrange $ zip (zip ps body1) xs
-                              (high', low') = (map (\((p, g),e ) -> (Phi p g e gamma' lvars')) high, map (\((p, g), e ) -> (Phi p g e gamma' lvars')) low)
+                              (high', low') = (map (\((p, g),e ) -> (Phi p g e gamma' lvars')) high, map (\((p, g),e ) -> (Phi p g e gamma' lvars')) low) 
                               phi' = applyPhi subFCheck phi in
                             case phi' of
                               Right p ->

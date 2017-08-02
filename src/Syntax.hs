@@ -43,7 +43,7 @@ freeVar (Lambda p f) =
   freeVar f `S.difference` freeVar p
 freeVar (Imply b h) = freeVar b `S.union` freeVar h
 freeVar (Ann (Var x) _) = S.insert x S.empty
-
+freeVar (Ann e _) = freeVar e
 free' e =freeVars e ++ eigenVar e
   
 eigenVar = S.toList . eigen
@@ -72,7 +72,7 @@ apply s a@(Const _) = a
 apply s (App f1 f2) = App (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply (minus s [x]) f2)
-apply s (Lambda x f2) = Lambda x (apply (minus s (freeVars x)) f2)
+apply s (Lambda x f2) = Lambda (apply s x) (apply (minus s (freeVars x)) f2)
 -- apply s (Forall x f2) = Forall x (apply s f2)
 -- apply s (Lambda x f2) = Lambda x (apply s f2)
 
@@ -81,6 +81,7 @@ apply s (Case e cons) = Case (apply s e) cons'
   where cons' = map (\(p,exp) -> (apply s p, apply s exp)) cons
 apply s (Let defs e) = Let def' (apply s e)
   where def' = map (\(p, exp) -> (apply s p, apply s exp)) defs
+apply s (Ann x e) = Ann (apply s x) (apply s e)  
 apply s e = error $ show e ++ "from apply"
 
 minus :: Subst -> [Name] -> Subst
