@@ -62,6 +62,16 @@ l' x = id id id x
 reverse :: forall a . List a -> List a
 reverse = id
 
+length :: forall a . List a -> Nat
+length Nil = Z
+length (Cons x xs) = S (length xs)
+
+ids :: List (forall a . a -> a)
+ids = Cons id Nil
+
+test2 :: Nat
+test2 = length ids
+
 -- foo :: Pair (List Bool) (List Nat)
 -- foo = let f = \ x -> Pair (x (Cons True Nil)) (x (Cons Z Nil))
 --       in f reverse
