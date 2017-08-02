@@ -19,6 +19,7 @@ makeTyEnv :: [Decl] -> TyEnv
 makeTyEnv [] = [] 
 makeTyEnv ((DataDecl _ _ cons):xs) = [(d, e) | (Const d, e) <- cons] ++ makeTyEnv xs
 makeTyEnv ((FunDecl (Var f) t _):xs) = (f, t):makeTyEnv xs
+makeTyEnv ((Prim (Var f) t):xs) = (f, t):makeTyEnv xs
 
 makeLam pats e = foldr (\ p e' -> Lambda p e') e pats
   

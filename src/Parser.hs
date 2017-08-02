@@ -41,9 +41,17 @@ decl = do
   reserved "module"
   name <- identifier
   reserved "where"
-  bs <- many $ try dataDecl <|> funDecl
+  bs <- many $ try dataDecl <|> try primDecl <|> funDecl
   eof
   return $ bs
+
+primDecl :: Parser Decl
+primDecl = do
+  reserved "primitive"
+  f <- var
+  reservedOp "::"
+  k <- ty
+  return $ Prim f k
 
 
 dataDecl :: Parser Decl
@@ -53,8 +61,7 @@ dataDecl = do
   reservedOp "::"
   k <- ty
   reserved "where"
-  indented
-  ls <- block $ do{c <- con; reservedOp "::"; t <- ty; return (c, t)}
+  ls <- option [] $ indented >> (block $ do{c <- con; reservedOp "::"; t <- ty; return (c, t)})
   return $ DataDecl n k ls
   
 -- (fun-name, [([pats], e)])    
@@ -210,7 +217,7 @@ gottlobStyle = Token.LanguageDef
                     "by", "from", "in", "let", "simpCmp", "step",
                     "case", "of",
                     "data", "if", "then", "else",
-                    "axiom", "proof", "qed", "lemma", "auto",
+                    "axiom", "proof", "qed", "lemma", "auto", "primitive",
                     "show",
                     "where", "module",
                     "infix", "infixl", "infixr", "pre", "post",

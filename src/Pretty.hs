@@ -124,6 +124,8 @@ instance Disp Decl where
   disp (FunDecl f t defs) =
     disp f <+> text "::" <+> disp t $$
     (vcat $ map (\ x -> disp f <+> disp x) defs) <+> text "\n"
+  disp (Prim f t) =
+    text "primitive" <+> disp f <+> text "::" <+> disp t
 
 instance Disp [Decl] where
   disp ls = vcat $ map disp ls
