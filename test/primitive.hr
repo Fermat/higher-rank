@@ -8,8 +8,19 @@ data Void :: * where
 
 primitive k :: forall p x . p (G (F (G x))) -> p (F x)
 
-h :: F Void
-h = k h 
+primitive h :: forall p x . p (F x)
+
+f :: forall x . F x
+f = h
+
+-- f :: forall p x . p (F x)
+-- f = let h = k h
+--     in h
+
+-- f :: forall x . F x
+-- f = let h :: forall p x . p (F x)
+--         h = k h
+--     in h
 
 
 
