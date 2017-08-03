@@ -94,6 +94,7 @@ mapE f (VarE x) = VarE  (f x)
 mapE f (AppE p1 p2) = AppE (mapE f p1) (mapE f p2)
 mapE f (LamE t) = LamE (mapE (mapI (mapE f)) t)
 
+
 gfoldE :: forall m n b . (forall a. m a -> n a) ->
             (forall a. n a -> n a -> n a) -> (forall a. n (Incr (n a)) -> n a) ->
 	      (forall a. Incr a -> m (Incr a)) ->
@@ -106,7 +107,7 @@ joinE :: forall a . TermE (TermE a) -> TermE a
 joinE x = gfoldE id AppE LamE VarE x
 
 cvtE :: forall a . TermE a -> Term a
-cvtE x = gfoldE Var App (\ y -> Lam (joinT (mapT distT y))) id x
+cvtE x = gfoldE Var App (\ x -> Lam (joinT (mapT distT x))) id x
 
 cvtBodyE :: forall a . TermE (Incr (TermE a)) -> Term (Incr a)
 cvtBodyE x = joinT (mapT distT (cvtE (mapE (mapI cvtE) x)))
