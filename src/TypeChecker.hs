@@ -254,7 +254,7 @@ transit (Res pf ((Phi pos goal@(Var x) exp gamma lvars):phi) Nothing i)
                            <+> text "in the environment" in
                     [(Res pf ((Phi pos goal exp gamma lvars):phi) m' i)]
         Just f ->
-          let sub' = [(x, f)] in
+          let sub' = if isVar f then [(getName f, Var x)] else [(x, f)] in
             if scopeCheck lvars sub'
             then let pf' = normalize $ apply (Subst sub') pf
                      pf'' = replace pf' pos exp
