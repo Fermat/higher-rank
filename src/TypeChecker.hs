@@ -141,17 +141,18 @@ makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 -- removing the notion of global existential variables
 scopeCheck :: [(Name, Int)] -> [(Name, Exp)] -> Bool
 scopeCheck lvars sub = let (sub1, sub2) = partition (\(x, t) -> x `elem` map fst lvars) sub
-                           r1 = and [ helper rvars b n | (x, t) <- sub1,
+                           r1 = and [ helper rvars b n && helper2 rvars lvars | (x, t) <- sub1,
                                       let (a, b) = break (\ z -> fst z == x) lvars,
                                       let Just n = lookup x lvars,
                                       let rvars = free' t]
-                       in r1 -- && r2                                      
+                       in r1 
                          --  r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvars]
 
          where helper (x:l) b n = case lookup x b of
                                      Nothing -> helper l b n
                                      Just n' -> if n' > n then False else helper l b n
                helper [] b n = True
+               helper2 rv lv = and [ x `elem` map fst lv | x <- rv]
 applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
 applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <- ls]
                       ls' = map (\(Phi p g e env lvars) ->
@@ -187,7 +188,7 @@ simp' (Ann x _) = x
 simp' a = a
 
 transit :: ResState -> [ResState]
-transit state | trace ("transit " ++show (state) ++"\n") False = undefined
+-- transit state | trace ("transit " ++show (state) ++"\n") False = undefined
 transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
   let (bs, h) = getHB goal
       (vars, b) = (viewLArgs exp, viewLBody exp)
