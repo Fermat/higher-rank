@@ -4,11 +4,12 @@ data F :: * -> * where
 
 data G :: * -> * where
 
+data Void :: * where
+
 primitive k :: forall p x . p (G (F (G x))) -> p (F x)
 
-h :: forall p x . p (F x)
-h = k h
+h :: F Void
+h = k h 
 
-e :: forall x . F x
-e = h
+
 

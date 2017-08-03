@@ -73,7 +73,10 @@ apply s a@(Const _) = a
 apply s (App f1 f2) = App (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply (minus s [x]) f2)
-apply s (Lambda x f2) = Lambda (apply s x) (apply (minus s (freeVars x)) f2)
+apply s (Lambda (Ann (Var x) t) f2) = Lambda (Ann (Var x) (apply s t))
+                                      (apply (minus s [x]) f2)
+apply s (Lambda x f2) = Lambda x (apply (minus s (freeVars x)) f2)
+                                      
 -- apply s (Forall x f2) = Forall x (apply s f2)
 -- apply s (Lambda x f2) = Lambda x (apply s f2)
 
@@ -83,7 +86,7 @@ apply s (Case e cons) = Case (apply s e) cons'
 apply s (Let defs e) = Let def' (apply s e)
   where def' = map (\(p, exp) -> (apply s p, apply s exp)) defs
 apply s (Ann x e) = Ann (apply s x) (apply s e)  
-apply s e = error $ show e ++ "from apply"
+-- apply s e = error $ show e ++ "from apply"
 
 minus :: Subst -> [Name] -> Subst
 minus (Subst sub) x = Subst [(y, e) | (y, e) <- sub, not $ y `elem` x]
@@ -158,6 +161,8 @@ debruijn (Imply b1 b2) = do
 debruijn (Lambda (Var x) f) = do
   a <- local (((x,0):) . plus1) $ debruijn f 
   return $ LAM a
+
+debruijn a = error $ show a
 
 plus1 = map $ \(x, y) -> (x, y + 1)
 
