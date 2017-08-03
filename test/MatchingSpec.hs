@@ -68,3 +68,7 @@ test3 = map disp $ runMatch'' (exp17) exp18
 -- minimal test case for matching.
 test4 = map disp $ runMatch' (exp17) (Imply (Const "String") (Const "String"))
 test5 = map disp $ runMatch'' (exp17) (Imply (Const "String") (Const "String"))
+test6 = map disp $ runMatch'' (App (Var "p") (App (Const "F") (Var "x"))) (App (Const "F") (Var "y"))
+
+test7 = map disp $ runMatch' (App (Var "p") (App (Const "F") (Var "x"))) (App (Const "F") (Var "y"))
+

@@ -70,7 +70,7 @@ funDecl = do
   v <- var
   reservedOp "::"
   t <- ty
-  ls <- manyTill eq (lookAhead (reserved "data") <|> (isNotVar v) <|> try eof)
+  ls <- manyTill eq (lookAhead (reserved "data") <|> lookAhead (reserved "primitive") <|> (isNotVar v) <|> try eof)
   return $ FunDecl v t ls
     where eq = do
             var

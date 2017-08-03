@@ -6,9 +6,36 @@ data G :: * -> * where
 
 data Void :: * where
 
-primitive k :: forall p x . p (G (F (G x))) -> p (F x)
+data Eq :: * -> * where
+data OddList :: * -> * where
+data EvenList :: * -> * where
+data Int :: * where
 
-primitive h :: forall p x . p (F x)
+primitive k :: forall p x . p (G (F (G x))) -> p (F x)
+primitive what :: (forall x . F x) -> Void
+-- primitive h :: forall p x . p (F x)
+
+primitive l :: forall x . F x -> F x
+
+fix :: forall a . (a -> a) -> a
+fix f = f (fix f)
+
+l' :: Void
+l' = let 
+         y = fix l
+     in what y
+   
+primitive kEven :: Eq a -> Eq (OddList a) -> Eq (EvenList a)
+
+primitive kOdd :: Eq a -> Eq (EvenList a) ->  Eq (OddList a)
+
+primitive kInt :: Eq Int
+
+h :: Eq (EvenList Int)
+h = kEven kInt (kOdd kInt h)
+    
+half :: (forall x . x) -> forall y . y
+half = \ x -> x x
 
 -- f :: forall x . F x
 -- f = h
@@ -17,8 +44,12 @@ primitive h :: forall p x . p (F x)
 -- f = let h = k h
 --     in h
 
-h :: forall p x . p (F x)
-h = k h
+-- h :: p (F x)
+-- h = k h
+
+-- e :: F y
+-- e = h
+
 -- f :: forall x . F x
 -- f = let h :: forall p x . p (F x)
 --         h = k h

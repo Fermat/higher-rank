@@ -187,7 +187,7 @@ simp' (Ann x _) = x
 simp' a = a
 
 transit :: ResState -> [ResState]
--- transit state | trace ("transit " ++show (state)) False = undefined
+transit state | trace ("transit " ++show (state) ++"\n") False = undefined
 transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
   let (bs, h) = getHB goal
       (vars, b) = (viewLArgs exp, viewLBody exp)
