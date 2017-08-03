@@ -538,7 +538,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
 
 transit e = [e]
           
-ersm :: [ResState] -> Either Doc [Exp]
+ersm :: [ResState] -> Either Doc Exp
 ersm init = let s = concat $ map transit init
                 (fails, pending) = partition failure s
                 flag = length fails == length s
@@ -548,8 +548,8 @@ ersm init = let s = concat $ map transit init
                                 $ zip rs [1..])
                else case [p | p <- pending, success p ] of
                       [] -> ersm s
-                      a -> Right $ map mixedTerm a
-                      --(Res pf _ _ _):_ -> Right pf
+                      -- a -> Right $ map mixedTerm a
+                      (Res pf _ _ _):_ -> Right pf
                              
   where failure (Res _ _ (Just _) _) = True
         failure _ = False

@@ -28,8 +28,8 @@ main = flip catches handlers $ do
                            let res = checkDecls a
                            case res of
                              Left e -> throw e
-                             Right pfs -> print $
-                                          vcat (map (\ x -> brackets $ vcat (map disp x)) pfs)
+                             Right pfs -> print $ vcat (map disp pfs)
+                                          -- vcat (map (\ x -> brackets $ vcat (map disp x)) pfs)
 
 
     _ -> putStrLn "usage: higher-rank <filename>"
