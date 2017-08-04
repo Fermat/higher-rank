@@ -140,13 +140,17 @@ makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
 -- removing the notion of global existential variables
 scopeCheck :: [(Name, Int)] -> [(Name, Exp)] -> Bool
-scopeCheck lvars sub = let (sub1, sub2) = partition (\(x, t) -> x `elem` map fst lvars) sub
-                           r1 = and [ helper rvars b n && helper2 rvars lvars | (x, t) <- sub1,
-                                      let (a, b) = break (\ z -> fst z == x) lvars,
-                                      let Just n = lookup x lvars,
-                                      let rvars = free' t]
-                       in r1 
-                         --  r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvars]
+scopeCheck lvars sub = let
+                         lv = map fst lvars
+                         sub' = [(x, t) | (x, t) <- sub, x `elem` lv]
+
+  -- let (sub1, sub2) = partition (\(x, t) -> x `elem` map fst lvars) sub
+  --                          r1 = and [ helper rvars b n && helper2 rvars lvars | (x, t) <- sub1,
+  --                                     let (a, b) = break (\ z -> fst z == x) lvars,
+  --                                     let Just n = lookup x lvars,
+  --                                     let rvars = free' t]
+  --                      in r1 
+                         --  r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvar]                           -- 
 
          where helper (x:l) b n = case lookup x b of
                                      Nothing -> helper l b n
@@ -200,7 +204,8 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
           b' = reLam (drop lenB vars) b
           (thetas, j) = makePatEnv vars' i
           newlvars = map snd $ concat thetas
-          indlvars = zip (map (\ (Var x) -> x) newlvars) [getValue lvars ..]
+          n = getValue lvars
+          indlvars = map (\ (Var x) -> (x, n)) newlvars
           lvars' = lvars++ indlvars
           positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes lenB)
           pairs = zip (zip (zip positionsVars bs) vars') thetas
@@ -212,7 +217,8 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
       in [(Res pf' (newEnv' ++ phi) Nothing j)]
     else let (thetas, j) = makePatEnv vars i
              newlvars = map snd $ concat thetas
-             indvars = zip (map (\ (Var x) -> x) newlvars) [getValue lvars ..]
+             n' = getValue lvars
+             indvars = map (\ (Var x) -> (x, n')) newlvars
              lvars' = lvars++indvars
              h' = reImp (drop len bs) h  
              positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes len)
@@ -230,9 +236,10 @@ transit (Res pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
     brExps = map snd alts
     y = "y"++show i
     len = length alts
+    n = getValue lvars
     (thetas, j) = makePatEnv pats (i+1)
     newlvars = y : map (\(Var x) -> x) (map snd $ concat thetas)
-    newlvars' = zip newlvars [getValue lvars ..]
+    newlvars' = map (\ x -> (x, n)) newlvars
     lvars' = lvars++newlvars'
     posLeft =  map (\ p -> pos++[1, p, 0]) [0..(len-1)]
     posRight = map (\ p -> pos++[1, p, 1]) [0..(len-1)]
@@ -441,7 +448,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                 do Subst sub <- ss
                    let subFCheck = [(x, y)|(x, y) <- sub, not $ x `elem` fresh]
                    if scopeCheck lvars subFCheck
-                     then let dom = freeVars newHead
+                     then let dom = map fst sub -- freeVars newHead
                               body' = map normalize $ (map (apply (Subst sub)) (take n body''))
                               np = ([ s | r <- fresh,
                                       let s = case lookup r sub of
@@ -483,7 +490,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                            
                                     m1 = m' $$ nest 2 mess in
                                   [Res pf ((Phi pos goal exp gamma lvars):phi) (Just m1) i]
-                     else let mess = text "scope error when matching" <+> disp (head'') $$
+                     else let mess = text "scope error when matching" <+> disp (newHead) $$
                                      text "against"<+> disp (goal)$$
                                      (nest 2 (text "when applying" <+> text v <+> text ":"
                                                <+> disp f)) $$
@@ -519,7 +526,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                 do Subst sub <- ss
                    let subFCheck = [(x, y)|(x, y) <- sub, not $ x `elem` fresh]
                    if scopeCheck lvars subFCheck
-                     then let dom = freeVars head''
+                     then let dom = map fst sub -- freeVars head''
                               body' = map normalize $ (map (apply (Subst sub)) body'')
                               body1 = body' ++ (map (apply (Subst sub)) glVars)
                               np = ([ s | r <- fresh,

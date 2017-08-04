@@ -20,11 +20,10 @@ primitive l :: forall x . F x -> F x
 fix :: forall a . (a -> a) -> a
 fix f = f (fix f)
 
-l' :: Void
-l' = let 
-         y = fix l
-     in what y
-   
+-- l' :: Void
+-- l' = let 
+--          y = fix l
+--      in what y
 primitive kEven :: Eq a -> Eq (OddList a) -> Eq (EvenList a)
 
 primitive kOdd :: Eq a -> Eq (EvenList a) ->  Eq (OddList a)
