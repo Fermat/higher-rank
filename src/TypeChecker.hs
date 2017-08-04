@@ -140,30 +140,16 @@ makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
 -- removing the notion of global existential variables
 scopeCheck :: [(Name, Int)] -> [(Name, Exp)] -> Bool
-scopeCheck lvars sub = let
-                         lv = map fst lvars
-                         sub' = [(x, t) | (x, t) <- sub, x `elem` lv]
-
-  -- let (sub1, sub2) = partition (\(x, t) -> x `elem` map fst lvars) sub
-  --                          r1 = and [ helper rvars b n && helper2 rvars lvars | (x, t) <- sub1,
-  --                                     let (a, b) = break (\ z -> fst z == x) lvars,
-  --                                     let Just n = lookup x lvars,
-  --                                     let rvars = free' t]
-  --                      in r1 
-                         --  r2 = and [null r | (x, t) <- sub2, let r = free' t `intersect` lvar]                           -- 
-
-         where helper (x:l) b n = case lookup x b of
-                                     Nothing -> helper l b n
-                                     Just n' -> if n' > n then False else helper l b n
-               helper [] b n = True
-               helper2 rv lv = and [ x `elem` map fst lv | x <- rv]
+scopeCheck lvars sub = let dom = map fst lvars in
+                         and [ne < nx | (x, t) <- sub, x `elem` dom, let (Just nx) = lookup x lvars, let evars = eigenVar t, e <- evars, e `elem` dom, let (Just ne) = lookup e lvars]
 applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
 applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <- ls]
                       ls' = map (\(Phi p g e env lvars) ->
-                                    (Phi p (normalize $ apply (Subst sub) g) e
+                                    (Phi p (normalize $ apply (Subst sub) g)
+                                      (normalize $ apply (Subst sub) e)
                                       (map (\ (x, t) -> (x, normalize $ apply (Subst sub) t))
                                        env)
-                                     (filter (\(x,_) -> not $ x `elem` map fst sub) lvars))) ls
+                                      lvars)) ls
                   in if and $ map fst f then Right ls'
                      else let (Phi p g e env lvars):as = [ l | (b, l) <- f, not b]
                               m = (nest 2 (text "environmental scope error when applying substitution") $$
@@ -178,7 +164,8 @@ applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <
 
 getValue :: [(Name, Int)] -> Int
 getValue [] = 1
-getValue xs = (snd $ last xs)+1
+getValue xs = (maximum $ map snd xs) + 1
+  -- (snd $ last xs)+1
 
 arrange :: [((Pos, Exp), Exp)] -> ([((Pos, Exp), Exp)], [((Pos, Exp), Exp)])
 arrange ls =  partition helper ls
@@ -446,7 +433,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                 in [(Res pf ((Phi pos goal exp gamma lvars):phi) m' i)]
               _ ->
                 do Subst sub <- ss
-                   let subFCheck = [(x, y)|(x, y) <- sub, not $ x `elem` fresh]
+                   let subFCheck = [(x, y)|(x, y) <- sub, not $ x `elem` fresh] -- x `elem` map fst lvars]
                    if scopeCheck lvars subFCheck
                      then let dom = map fst sub -- freeVars newHead
                               body' = map normalize $ (map (apply (Subst sub)) (take n body''))
@@ -454,8 +441,10 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                       let s = case lookup r sub of
                                                 Nothing -> (Var r)
                                                 Just t -> t])
-                              lvars1 = filter (\(x, i) -> not $ x `elem` map fst sub) lvars
-                              lvars' = lvars1 ++ zip [x | x <- fresh, not (x `elem` dom)]
+                              -- lvars1 = filter (\(x, i) -> not $ x `elem` map fst sub) lvars
+                              lvars'' = [(y, n) | y <- fresh, not $ y `elem` dom , (x, t) <- subFCheck, y `elem` freeVars t, let Just n = lookup x lvars]
+                              lvars1 = lvars++lvars''
+                              lvars' = lvars1 ++ zip [x | x <- fresh, not (x `elem` dom), not (x `elem` map fst lvars'')]
                                                  [getValue lvars1 ..]
                               name = if isUpper $ Data.List.head v
                                      then Const v else Var v
@@ -524,7 +513,7 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                 in [(Res pf ((Phi pos goal exp gamma lvars):phi) m' i)]
               _ ->
                 do Subst sub <- ss
-                   let subFCheck = [(x, y)|(x, y) <- sub, not $ x `elem` fresh]
+                   let subFCheck = [(x, y)|(x, y) <- sub, not $ x `elem` fresh ] 
                    if scopeCheck lvars subFCheck
                      then let dom = map fst sub -- freeVars head''
                               body' = map normalize $ (map (apply (Subst sub)) body'')
@@ -533,11 +522,15 @@ transit (Res pf ((Phi pos goal exp gamma lvars):phi) Nothing i) =
                                       let s = case lookup r sub of
                                                 Nothing -> (Var r)
                                                 Just t -> t])
-                              lvars1 = filter (\(x, i) -> not $ x `elem` map fst sub) lvars
-                              lvars'' = lvars1 ++ zip [x | x <- fresh, not (x `elem` dom)]
-                                                     [getValue lvars1 ..]
-                              va = getValue lvars''          
-                              lvars' = lvars'' ++ map (\x -> (x, va)) glVars'
+                              lvars'' = [(y, n) | y <- fresh, not $ y `elem` dom , (x, t) <- subFCheck, y `elem` freeVars t, let Just n = lookup x lvars]
+                              lvars1 = lvars++lvars''
+                              lvars''' = lvars1 ++ zip [x | x <- fresh, not (x `elem` dom), not (x `elem` map fst lvars'')]
+                                                 [getValue lvars1 ..]                                   
+                              -- lvars1 = filter (\(x, i) -> not $ x `elem` map fst sub) lvars
+                              -- lvars'' = lvars1 ++ zip [x | x <- fresh, not (x `elem` dom)]
+                              --                        [getValue lvars1 ..]
+                              va = getValue lvars'''          
+                              lvars' = lvars''' ++ map (\x -> (x, va)) glVars'
                               name = if isUpper $ Data.List.head v
                                      then Const v else Var v
                               contm = foldl' (\ z x -> App z x)

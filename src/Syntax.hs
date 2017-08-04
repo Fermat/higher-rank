@@ -49,7 +49,7 @@ free' e =freeVars e ++ eigenVar e
   
 eigenVar = S.toList . eigen
 
-eigen (Var x) =  S.insert x S.empty
+eigen (Var x) = S.empty
 eigen (Const x) = if isLower (head x) then S.insert x S.empty else S.empty
 eigen (App f1 f2) = (eigen f1) `S.union` (eigen f2)
 eigen (Forall x f) = S.delete x (eigen f)
