@@ -69,7 +69,8 @@ agree s = let xs = [(x, e) | (x, e) <- s, let a = filter (\ (y, e') -> y == x) s
           in length s == length xs 
   
 
-  
+-- match two types expression or two kind expression
+
 match :: Exp -> Exp -> State Int [Subst]
 -- match e1 e2 | trace ("\n matching " ++ show (disp e1) ++"\n" ++ show (disp e2)) False = undefined
 match Star Star = return [Subst []]
@@ -77,12 +78,13 @@ match (Var x) e | (Var x) == e = return $ [Subst []]
                 | x `elem` freeVars e = return []
                 | otherwise = return $ [Subst [(x, e)]]
 
-match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
-                                       s' <- mapM (\ sub -> match (apply sub a2) (apply sub b2))
-                                             s
-                                       let res = [map (\ x -> extend x sub) subs |
-                                                  sub <- s, subs <- s']
-                                       return $ concat res
+-- implication is treated as applying  constant "->"
+-- match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
+--                                        s' <- mapM (\ sub -> match (apply sub a2) (apply sub b2))
+--                                              s
+--                                        let res = [map (\ x -> extend x sub) subs |
+--                                                   sub <- s, subs <- s']
+--                                        return $ concat res
 
 match (Forall x e) (Forall y e') = let e1 = apply (Subst [(x, Const x)]) e
                                        e2 = apply (Subst [(y, Const x)]) e' in
@@ -96,8 +98,7 @@ match e (Var x) | (Var x) == e = return [Subst []]
                 | x `elem` freeVars e = return []
                 | otherwise = return [Subst [(x, e)]]
 
--- rigid-rigid
--- has bug
+-- rigid-rigid first-order simp
 match e1 e2 | (Const x):xs <- flatten e1,
               (Const y):ys <- flatten e2,
               x == y, length xs == length ys =
@@ -119,20 +120,21 @@ match e1 e2 | (Var x):xs <- flatten e1,
                                              | (sub', subs) <- zip x s']})
                 [Subst []] (zip xs ys)
 
--- exchange
+-- braiding
 match e1 e2 | (Const x):xs <- flatten e1, (Var z):ys <- flatten e2  = match e2 e1
 
 -- rigid-flexible, 
-match e1 e2 | (Var x):xs <- flatten e1, y:ys <- flatten e2,
-              (Var x) /= y  =
+match e1 e2 | (Var x):xs <- flatten e1, (Const y):ys <- flatten e2 =
+--              (Var x) /= y  =
               do
                 let argL = length xs
                     argL' = length ys
                     prjs = genProj argL
-                imi <- genImitation y argL argL'
+                imi <- genImitation (Const y) argL argL'
                 let renew = normalize $ apply (Subst [(x, imi)]) e1
-                    pis = map (\ (a, b) -> (normalize $ apply (Subst [(x, a)]) b, e2)) (zip prjs xs)
-                    imiAndProj = (renew, e2) : pis
+                    pis = map (\ (a, b) ->
+                                  (normalize $ apply (Subst [(x, a)]) b, apply (Subst [(x, a)]) e2)) (zip prjs xs)
+                    imiAndProj = (renew, apply (Subst [(x, imi)]) e2) : pis
                     oldsubst = [(x, imi)]: map (\ y -> [(x,y)]) prjs
                 bs <- mapM (\ ((a, b), u) -> do{s <- match a b;
                                                 return $ map (\ y -> extend y (Subst u)) s})
