@@ -12,7 +12,7 @@ import Debug.Trace
 
 type Pos = [Int] 
 
--- Global type environment
+-- type environment
 type TyEnv = [(Name, Exp)]
 
 makeTyEnv :: [Decl] -> TyEnv
@@ -36,8 +36,8 @@ typeCheck env (goal, e) =
 -- subgoal state    
 data Phi = Phi{
               position :: Pos,
-              currentGoal :: Exp,
-              currentProg :: Exp,
+              currentGoal :: Maybe Exp,
+              currentProg :: Maybe Exp,
               env :: TyEnv,
               scope :: [(Name, Int)] }
            deriving (Show)
@@ -164,7 +164,7 @@ scopeCheck lvars sub = let dom = map fst lvars in
 applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
 applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <- ls]
                       ls' = map (\(Phi p g e env lvars) ->
-                                    (Phi p (normalize $ apply (Subst sub) g)
+                                    (Phi p (normalize $ apply' (Subst sub) g)
                                       e -- (normalize $ apply (Subst sub) e)
                                       (map (\ (x, t) -> (x, normalize $ apply (Subst sub) t))
                                        env)
@@ -199,7 +199,19 @@ simp' a = a
 
 transit :: ResState -> [ResState]
 --transit state | trace ("transit " ++show (state) ++"\n") False = undefined
-transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) Nothing i) =
+transit (Res pf ((Phi pos (Just goal@(Forall x y)) (Just exp@(Lambda _ _)) gamma lvars):phi) Nothing i) =
+  let (vars, imp) = getVars goal
+      lv = length vars
+      absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
+      absVars = zip absNames [getValue lvars ..]
+      sub = zip vars (map Const absNames)
+      imp' = apply (Subst sub) imp
+      newAbs = foldr (\ a b -> Lambda (Var a) b) imp' absNames
+      pf' = replace pf pos newAbs
+      pos' = pos ++ take lv stream1
+  in [(Res pf' ((Phi pos' (Just imp') (Just exp) gamma (lvars++ absVars)):phi) Nothing (i+lv))]
+
+transit (Res pf ((Phi pos (Just goal@(Imply _ _)) (Just exp@(Lambda _ _ )) gamma lvars):phi) Nothing i) =
   let (bs, h) = getHB goal
       (vars, b) = (viewLArgs exp, viewLBody exp)
       len = length vars
@@ -215,9 +227,9 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
           lvars' = lvars++ indlvars
           positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes lenB)
           pairs = zip (zip (zip positionsVars bs) vars') thetas
-          newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars')) pairs
+          newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' (Just g) (Just pat) (thetaP++gamma) lvars')) pairs
           boPos = pos++(take (lenB-1) stream1)++[1]
-          newEnv' = newEnv ++ [(Phi boPos h b' (concat thetas ++ gamma) lvars')]
+          newEnv' = newEnv ++ [(Phi boPos (Just h) (Just b') (concat thetas ++ gamma) lvars')]
           newLam = foldr (\ a b -> Lambda (Ann a a) b) h bs
           pf' = replace pf pos newLam
       in [(Res pf' (newEnv' ++ phi) Nothing j)]
@@ -229,18 +241,18 @@ transit (Res pf ((Phi pos goal@(Imply _ _) exp@(Lambda _ _ ) gamma lvars):phi) N
              h' = reImp (drop len bs) h  
              positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes len)
              pairs = zip (zip (zip positionsVars bs) vars) thetas
-             newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' g pat (thetaP++gamma) lvars')) pairs
+             newEnv = map (\ (((pos', g), pat), thetaP) -> (Phi pos' (Just g) (Just pat) (thetaP++gamma) lvars')) pairs
              boPos = pos++(take (len-1) stream1)++[1]
-             newEnv' = newEnv ++ [(Phi boPos h' b (concat thetas ++ gamma) lvars')]
+             newEnv' = newEnv ++ [(Phi boPos (Just h') (Just b) (concat thetas ++ gamma) lvars')]
              newLam = foldr (\ a b -> Lambda (Ann a a) b) h' (take len bs)
              pf' = replace pf pos newLam
          in [(Res pf' (newEnv' ++ phi) Nothing j)]
 
-transit (Res pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
+transit (Res pf ((Phi pos (Just goal) (Just exp@(Case e alts)) gamma lvars):phi) Nothing i) =
   let
     pats = map fst alts
     brExps = map snd alts
-    y = "y"++show i
+    y = "y"++show i++"'"
     len = length alts
     n = getValue lvars
     (thetas, j) = makePatEnv pats (i+1)
@@ -249,59 +261,95 @@ transit (Res pf ((Phi pos goal exp@(Case e alts) gamma lvars):phi) Nothing i) =
     lvars' = lvars++newlvars'
     posLeft =  map (\ p -> pos++[1, p, 0]) [0..(len-1)]
     posRight = map (\ p -> pos++[1, p, 1]) [0..(len-1)]
-    leftEnv = map (\(po, (p, th)) -> (Phi po (Var y) p (th++gamma) lvars')) $
+    leftEnv = map (\(po, (p, th)) -> (Phi po (Just (Var y)) (Just p) (th++gamma) lvars')) $
               zip posLeft (zip pats thetas)
-    rightEnv = map (\(po, (e', th)) -> (Phi po goal e' (th++gamma) lvars')) $
+    rightEnv = map (\(po, (e', th)) -> (Phi po (Just goal) (Just e') (th++gamma) lvars')) $
                zip posRight (zip brExps thetas)
     altsEnv =  leftEnv ++ rightEnv
-    newEnv = (Phi (pos++[0]) (Var y) e gamma lvars'):altsEnv
+    newEnv = (Phi (pos++[0]) (Just (Var y)) (Just e) gamma lvars'):altsEnv
     newCase = Case (Var y) $ replicate len ((Var y), goal) 
     pf' = replace pf pos newCase
   in [(Res pf' (newEnv++phi) Nothing j)]
 
+transit (Res pf ((Phi pos (Just goal) (Just exp@(Let defs e)) gamma lvars):phi) Nothing i) =
+  let pats = map fst defs
+      defends = map snd defs
+      (thetas, j) = makePatEnv pats i
+      len = length pats
+      pats' = simp pats
+      j' = j + len
+      tyvars = map (\ x -> "y"++show x ++ "'") [j.. (j'-1)]
+      tyvars' = map Var tyvars
+      n = getValue lvars
+      tyvarsind = map (\ x -> (x, n)) tyvars
+      newlvars =  map (\(Var x) -> (x, n)) (map snd $ filter (\ (x, e) -> isVar e) $ concat thetas)
+      lvars' = lvars++ tyvarsind ++ newlvars 
+      posLeft =  map (\ p -> pos++[0, p, 0]) [0..(len-1)]
+      posRight = map (\ p -> pos++[0, p, 1]) [0..(len-1)]
+      leftEnv = map (\(y , (po, p)) -> (Phi po (Just y) (Just p) (concat thetas++gamma) lvars')) $
+                zip tyvars' $ zip posLeft pats' 
+      rightEnv = map (\(y, (po, e')) -> (Phi po (Just y) (Just e') (concat thetas++gamma) lvars')) $
+                 zip tyvars' $ zip posRight defends 
+      defsEnv =  leftEnv ++ rightEnv
+      newEnv = defsEnv ++ [(Phi (pos++[1]) (Just goal) (Just e) (concat thetas ++gamma) lvars')]
+      newLet = Let (map (\ x -> (x, x)) tyvars') goal 
+      pf' = replace pf pos newLet
+  in [(Res pf' (newEnv++phi) Nothing j')]
 
-transit (Res pf ((Phi pos goal@(Var x) exp gamma lvars):phi) Nothing i)
+transit (Res pf ((Phi pos (Just goal@(Forall x y)) (Just exp) gamma lvars):phi) Nothing i)
   | isAtom exp =
       let y = getName exp
       in case lookup y gamma of
         Nothing -> let m' = Just $ text "can't find" <+> text y
                            <+> text "in the environment" in
-                    [(Res pf ((Phi pos goal exp gamma lvars):phi) m' i)]
+                    [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
         Just f ->
-          let sub' = if isVar f then [(getName f, Var x)] else [(x, f)] in
-            if scopeCheck lvars sub'
-            then let pf' = normalize $ apply (Subst sub') pf
-                     pf'' = replace pf' pos exp
-                     phi' = applyPhi sub' phi in
-                   case phi' of
-                     Right p -> return $ Res pf'' p Nothing i
-                     Left m' ->
-                       let mess = (text "globally, when matching" <+> disp f) $$
-                                  (text "against"<+> disp (goal)) $$
-                                  (nest 2 (text "when applying" <+> text y
-                                            <+> text ":" <+> disp f)) $$
-                                  (nest 2 (text "when applying substitution"
-                                           <+> text "[" <+> disp sub' <+> text "]")) $$
-                                  (nest 2 $ text "current variables list:" $$
-                                    nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
-                                  (nest 2 $ text "the current mixed proof term:" $$
+          let ss = runMatch' f goal in
+            case ss of
+              [] ->
+                let m' = Just $ text "can't match" <+> disp f $$
+                         text "against" <+> disp goal $$
+                         (nest 2 (text "when applying" <+>text y <+> text ":"
+                                   <+> disp f)) $$
+                         (nest 2 $ text "current mixed proof term" $$
+                           nest 2 (disp pf))
+                in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+              _ ->
+                do Subst sub <- ss
+                   if scopeCheck lvars sub then
+                     let lvars' = applyS sub lvars
+                         gamma' = map (\ (x, t) -> (x, normalize $ apply (Subst sub) t) ) gamma
+                     in 
+                       case applyPhi sub phi of 
+                         Right p -> return $ Res pf'' (p++[Phi pos Nothing Nothing gamma' lvars']) Nothing i
+                         Left m' ->
+                           let mess = (text "globally, when matching" <+> disp f) $$
+                                      (text "against"<+> disp (goal)) $$
+                                      (nest 2 (text "when applying" <+> text y
+                                               <+> text ":" <+> disp f)) $$
+                                      (nest 2 (text "when applying substitution"
+                                               <+> text "[" <+> disp sub <+> text "]")) $$
+                                      (nest 2 $ text "current variables list:" $$
+                                       nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
+                                      (nest 2 $ text "the current mixed proof term:" $$
+                                       nest 2 (disp pf))
+                               m1 = m' $$ nest 2 mess in
+                             [Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) (Just m1) i]                         
+                     else
+                      let mess = text "scope error when matching" <+> disp f $$
+                                 text "against"<+> disp (goal)$$
+                                 (nest 2 (text "when applying" <+> text y <+> text ":"
+                                          <+> disp f)) $$
+                                 (nest 2 (text "when applying substitution" <+> text "["
+                                          <+> disp sub <+> text "]")) $$
+                                 (nest 2 $ text "current variables list:" $$
+                                  nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
+                                 (nest 2 $ text "the current mixed proof term:" $$
                                    nest 2 (disp pf))
-                           m1 = m' $$ nest 2 mess in
-                         [Res pf ((Phi pos goal exp gamma lvars):phi) (Just m1) i]
-            else let mess = text "scope error when matching" <+> disp (f) $$
-                            text "against"<+> disp (goal)$$
-                            (nest 2 (text "when applying" <+> text y <+> text ":"
-                                     <+> disp f)) $$
-                            (nest 2 (text "when applying substitution" <+> text "["
-                                     <+> disp sub' <+> text "]")) $$
-                            (nest 2 $ text "current variables list:" $$
-                              nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
-                            (nest 2 $ text "the current mixed proof term:" $$
-                              nest 2 (disp pf))
-                 in [Res pf ((Phi pos goal exp gamma lvars):phi) (Just mess) i]
-                                                                          
-     
-transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) | isAtom exp =
+                in [Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) (Just mess) i]
+
+transit (Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) Nothing i)
+  | isAtom exp =
   let (vars, imp) = getVars goal
       lv = length vars
       absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
@@ -353,42 +401,7 @@ transit (Res pf ((Phi pos goal@(Forall x y) exp gamma lvars):phi) Nothing i) | i
          [(Res pf' ((Phi pos' imp' exp gamma (lvars++ absVars)):phi) Nothing (i+lv))]
                    
 
-transit (Res pf ((Phi pos goal@(Forall x y) exp@(Lambda _ _) gamma lvars):phi) Nothing i) =
-  let (vars, imp) = getVars goal
-      lv = length vars
-      absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
-      absVars = zip absNames [getValue lvars ..]
-      sub = zip vars (map Const absNames)
-      imp' = apply (Subst sub) imp
-      newAbs = foldr (\ a b -> Lambda (Var a) b) imp' absNames
-      pf' = replace pf pos newAbs
-      pos' = pos ++ take lv stream1
-  in [(Res pf' ((Phi pos' imp' exp gamma (lvars++ absVars)):phi) Nothing (i+lv))]
 
-transit (Res pf ((Phi pos goal exp@(Let defs e) gamma lvars):phi) Nothing i) =
-  let pats = map fst defs
-      defends = map snd defs
-      (thetas, j) = makePatEnv pats i
-      len = length pats
-      pats' = simp pats
-      j' = j + len
-      tyvars = map (\ x -> "y"++show x ++ "'") [j.. (j'-1)]
-      tyvars' = map Var tyvars
-      n = getValue lvars
-      tyvarsind = map (\ x -> (x, n)) tyvars
-      newlvars =  map (\(Var x) -> (x, n)) (map snd $ filter (\ (x, e) -> isVar e) $ concat thetas)
-      lvars' = lvars++ tyvarsind ++ newlvars 
-      posLeft =  map (\ p -> pos++[0, p, 0]) [0..(len-1)]
-      posRight = map (\ p -> pos++[0, p, 1]) [0..(len-1)]
-      leftEnv = map (\(y , (po, p)) -> (Phi po y p (concat thetas++gamma) lvars')) $
-                zip tyvars' $ zip posLeft pats' 
-      rightEnv = map (\(y, (po, e')) -> (Phi po y e' (concat thetas++gamma) lvars')) $
-                 zip tyvars' $ zip posRight defends 
-      defsEnv =  leftEnv ++ rightEnv
-      newEnv = defsEnv ++ [(Phi (pos++[1]) goal e (concat thetas ++gamma) lvars')]
-      newLet = Let (map (\ x -> (x, x)) tyvars') goal 
-      pf' = replace pf pos newLet
-  in [(Res pf' (newEnv++phi) Nothing j')]
 
 
 

@@ -65,6 +65,9 @@ flatten a = [a]
 -- substitution that blindly substitutes
 newtype Subst = Subst [(String, Exp)] deriving (Show, Eq)
 
+apply' :: Subst -> Maybe Exp -> Maybe Exp
+apply' s = fmap $ apply s
+
 apply :: Subst -> Exp -> Exp
 apply (Subst s) (Var x) = case lookup x s of
                             Nothing -> Var x

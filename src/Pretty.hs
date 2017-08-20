@@ -52,6 +52,9 @@ viewFBody :: Exp -> Exp
 viewFBody (Forall _ a) = viewFBody a
 viewFBody x = x
 
+instance Disp (Maybe Exp) where
+  disp Nothing = text "<>"
+  disp (Just e) = disp e
 
 instance Disp Exp where
 --  disp r | trace ("disp " ++ show r) False = undefined
