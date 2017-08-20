@@ -32,7 +32,8 @@ typeCheck env (goal, e) =
   let phi = Phi [] goal e env []
       init = Res goal [phi] Nothing 0 in
     ersm [init] 
-        
+
+-- subgoal state    
 data Phi = Phi{
               position :: Pos,
               currentGoal :: Exp,
@@ -138,18 +139,25 @@ takeOnes n | n > 1 = (take (n-1) stream1):takeOnes (n-1)
 makeZeros 0 = []
 makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
--- removing the notion of global existential variables
+
+applyS :: [(Name, Exp)] -> [(Name, Int)] -> [(Name, Int)]
+applyS = undefined
+
 scopeCheck :: [(Name, Int)] -> [(Name, Exp)] -> Bool
 scopeCheck lvars sub = let dom = map fst lvars in
-                         and [ne < nx | (x, t) <- sub, x `elem` dom, let (Just nx) = lookup x lvars, let evars = eigenVar t, e <- evars, e `elem` dom, let (Just ne) = lookup e lvars]
+                         and [ne < nx | (x, t) <- sub, x `elem` dom,
+                              let (Just nx) = lookup x lvars,
+                                  let evars = eigenVar t,
+                                  e <- evars, e `elem` dom, let (Just ne) = lookup e lvars]
+                         
 applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
 applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <- ls]
                       ls' = map (\(Phi p g e env lvars) ->
                                     (Phi p (normalize $ apply (Subst sub) g)
-                                      (normalize $ apply (Subst sub) e)
+                                      e -- (normalize $ apply (Subst sub) e)
                                       (map (\ (x, t) -> (x, normalize $ apply (Subst sub) t))
                                        env)
-                                      lvars)) ls
+                                      applyS sub lvars)) ls
                   in if and $ map fst f then Right ls'
                      else let (Phi p g e env lvars):as = [ l | (b, l) <- f, not b]
                               m = (nest 2 (text "environmental scope error when applying substitution") $$
