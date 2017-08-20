@@ -29,7 +29,7 @@ checkDecls a = let tyEnv = makeTyEnv a
               in mapM (typeCheck tyEnv) funcDefs
 
 typeCheck env (goal, e) =
-  let phi = Phi [] goal e env []
+  let phi = Phi [] (Just goal) (Just e) env []
       init = Res goal [phi] Nothing 0 in
     ersm [init] 
 
@@ -140,13 +140,13 @@ makeZeros 0 = []
 makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
 contract :: [(Name, Int)] -> [(Name, Int)]
-contract lvars = dup [(x, v) | (x, n) <- lvars, let v = minimum $ map snd $ filter (\ (y, n') -> y == x) lvars ]
+contract lvars = nub [(x, v) | (x, n) <- lvars, let v = minimum $ map snd $ filter (\ (y, n') -> y == x) lvars ]
 
 applyS :: [(Name, Exp)] -> [(Name, Int)] -> [(Name, Int)]
 applyS sub lvars = let dom = map fst sub
                        lv = map fst lvars
-                       lsigma = [ (b, minimum na nb)| a <- dom, a `elem` lv, let (Just na) = lookup a lvars,
-                                  let fvs = freeVars (apply sub a), b <- fvs, b `elem` lv,
+                       lsigma = [ (b, min na nb)| a <- dom, a `elem` lv, let (Just na) = lookup a lvars,
+                                  let fvs = freeVars (apply (Subst sub) (Var a)), b <- fvs, b `elem` lv,
                                       let (Just nb) = lookup b lvars
                                   ]
                        ls' = contract lsigma
@@ -164,11 +164,11 @@ scopeCheck lvars sub = let dom = map fst lvars in
 applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
 applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <- ls]
                       ls' = map (\(Phi p g e env lvars) ->
-                                    (Phi p (normalize $ apply' (Subst sub) g)
+                                    (Phi p (normalize' $ apply' (Subst sub) g)
                                       e -- (normalize $ apply (Subst sub) e)
                                       (map (\ (x, t) -> (x, normalize $ apply (Subst sub) t))
                                        env)
-                                      applyS sub lvars)) ls
+                                      (applyS sub lvars))) ls
                   in if and $ map fst f then Right ls'
                      else let (Phi p g e env lvars):as = [ l | (b, l) <- f, not b]
                               m = (nest 2 (text "environmental scope error when applying substitution") $$
@@ -319,9 +319,10 @@ transit (Res pf ((Phi pos (Just goal@(Forall x y)) (Just exp) gamma lvars):phi) 
                    if scopeCheck lvars sub then
                      let lvars' = applyS sub lvars
                          gamma' = map (\ (x, t) -> (x, normalize $ apply (Subst sub) t) ) gamma
+                         pf' = apply (Subst sub) pf
                      in 
                        case applyPhi sub phi of 
-                         Right p -> return $ Res pf'' (p++[Phi pos Nothing Nothing gamma' lvars']) Nothing i
+                         Right p -> return $ Res pf' (p++[Phi pos Nothing Nothing gamma' lvars']) Nothing i
                          Left m' ->
                            let mess = (text "globally, when matching" <+> disp f) $$
                                       (text "against"<+> disp (goal)) $$
@@ -346,7 +347,7 @@ transit (Res pf ((Phi pos (Just goal@(Forall x y)) (Just exp) gamma lvars):phi) 
                                   nest 2 (hsep $ map (\(x,i) -> parens $ text x <+> comma <+> int i) lvars)) $$
                                  (nest 2 $ text "the current mixed proof term:" $$
                                    nest 2 (disp pf))
-                in [Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) (Just mess) i]
+                      in [Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) (Just mess) i]
 
 transit (Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) Nothing i)
   | isAtom exp =
@@ -625,5 +626,5 @@ ersm init = let s = concat $ map transit init
                              
   where failure (Res _ _ (Just _) _) = True
         failure _ = False
-        success (Res pf [] Nothing i) = True
+        success (Res pf phi Nothing i) = and $ map (\p -> currentGoal p == Nothing && currentProg p == Nothing) phi 
         success _ = False

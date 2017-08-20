@@ -102,6 +102,9 @@ extend (Subst s1) (Subst s2) = Subst $ [(x, normalize $ apply (Subst s1) e) | (x
 
 
 -- normalize type expresion
+normalize' :: Maybe Exp -> Maybe Exp
+normalize' = fmap normalize
+
 normalize :: Exp -> Exp
 -- normalize r | trace ("normalize " ++ show r) False = undefined
 normalize t = let t1 = norm t
