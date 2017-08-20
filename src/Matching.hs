@@ -64,9 +64,9 @@ runMatch'' e1 e2 = let subs = evalState (match (convert e1) (convert e2)) 0
                   in subs'''
 
 agree :: [(Name, Exp)] -> Bool
-agree  s = let xs = [(x, e) | (x, e) <- s, let a = filter (\ (y, e') -> y == x) s,
-                                                      all (\ (x', e'') -> e `alphaEq` e'') a]
-           in length s == length xs 
+agree s = let xs = [(x, e) | (x, e) <- s, let a = filter (\ (y, e') -> y == x) s,
+                                                all (\ (x', e'') -> e `alphaEq` e'') a]
+          in length s == length xs 
   
 
   

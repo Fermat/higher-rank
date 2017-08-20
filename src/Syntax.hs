@@ -45,7 +45,7 @@ freeVar (Lambda p f) =
 freeVar (Imply b h) = freeVar b `S.union` freeVar h
 freeVar (Ann (Var x) _) = S.insert x S.empty
 freeVar (Ann e _) = freeVar e
-free' e =freeVars e ++ eigenVar e
+-- free' e =freeVars e ++ eigenVar e
   
 eigenVar = S.toList . eigen
 
@@ -72,24 +72,26 @@ apply (Subst s) (Var x) = case lookup x s of
 apply s a@(Const _) = a
 apply s (App f1 f2) = App (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
-apply s (Forall x f2) = Forall x (apply (minus s [x]) f2)
-apply s (Lambda (Ann (Var x) t) f2) = Lambda (Ann (Var x) (apply s t))
-                                      (apply (minus s [x]) f2)
-apply s (Lambda x f2) = Lambda x (apply (minus s (freeVars x)) f2)
+-- apply s (Forall x f2) = Forall x (apply (minus s [x]) f2)
+-- apply s (Lambda (Ann (Var x) t) f2) = Lambda (Ann (Var x) (apply s t))
+--                                       (apply (minus s [x]) f2)
+-- apply s (Lambda x f2) = Lambda x (apply (minus s (freeVars x)) f2)
                                       
--- apply s (Forall x f2) = Forall x (apply s f2)
--- apply s (Lambda x f2) = Lambda x (apply s f2)
+apply s (Forall x f2) = Forall x (apply s f2)
 
+apply s (Lambda (Ann (Var x) t) f2) = Lambda (Ann (Var x) (apply s t))
+                                      (apply s f2)
+apply s (Lambda x f2) = Lambda x (apply s f2)
 apply s Star = Star
 apply s (Case e cons) = Case (apply s e) cons'
-  where cons' = map (\(p,exp) -> (apply s p, apply s exp)) cons
+  where cons' = map (\(p,exp) -> (p, apply s exp)) cons
 apply s (Let defs e) = Let def' (apply s e)
-  where def' = map (\(p, exp) -> (apply s p, apply s exp)) defs
+  where def' = map (\(p, exp) -> (p, apply s exp)) defs
 apply s (Ann x e) = Ann (apply s x) (apply s e)  
 -- apply s e = error $ show e ++ "from apply"
 
-minus :: Subst -> [Name] -> Subst
-minus (Subst sub) x = Subst [(y, e) | (y, e) <- sub, not $ y `elem` x]
+-- minus :: Subst -> [Name] -> Subst
+-- minus (Subst sub) x = Subst [(y, e) | (y, e) <- sub, not $ y `elem` x]
 
 extend :: Subst -> Subst -> Subst
 -- extend (Subst s1) (Subst s2) = Subst $ s2 ++ s1
