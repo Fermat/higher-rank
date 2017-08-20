@@ -433,14 +433,14 @@ transit (Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) Nothing i) =
                                 <+> text "in the environment" in
                          [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
             Just f -> let (vars, head, body) = separate f
-                          (gvars, ghead, gbody) = separate goal
+--                          (gvars, ghead, gbody) = separate goal
                           i' = i + length vars
                           fresh = map (\ (v, j) -> v ++ show j ++ "'") $ zip vars [i..]
                           renaming = zip vars (map Var fresh)
                           body'' = map (apply (Subst renaming)) body
                           head'' = apply (Subst renaming) head
                           n = length xs
-                          m = length gbody
+--                          m = length gbody
                           l = length body
                       in
                         if l <= n then let j = i' + (n-l) in
