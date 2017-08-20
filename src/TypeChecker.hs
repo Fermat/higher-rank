@@ -139,9 +139,20 @@ takeOnes n | n > 1 = (take (n-1) stream1):takeOnes (n-1)
 makeZeros 0 = []
 makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
+contract :: [(Name, Int)] -> [(Name, Int)]
+contract lvars = dup [(x, v) | (x, n) <- lvars, let v = minimum $ map snd $ filter (\ (y, n') -> y == x) lvars ]
 
 applyS :: [(Name, Exp)] -> [(Name, Int)] -> [(Name, Int)]
-applyS = undefined
+applyS sub lvars = let dom = map fst sub
+                       lv = map fst lvars
+                       lsigma = [ (b, minimum na nb)| a <- dom, a `elem` lv, let (Just na) = lookup a lvars,
+                                  let fvs = freeVars (apply sub a), b <- fvs, b `elem` lv,
+                                      let (Just nb) = lookup b lvars
+                                  ]
+                       ls' = contract lsigma
+                       vn = map fst ls'
+                       es = [(a, n) | (a, n) <- lvars, not $ a `elem` vn]
+                    in ls' ++ es 
 
 scopeCheck :: [(Name, Int)] -> [(Name, Exp)] -> Bool
 scopeCheck lvars sub = let dom = map fst lvars in
