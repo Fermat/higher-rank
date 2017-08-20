@@ -61,7 +61,7 @@ l' = id id id id id id id id id
 -- id id id id id id id id id 
 
 reverse :: forall a . List a -> List a
-reverse = id 
+reverse = \ x -> id x
 
 length :: forall a . List a -> Nat
 length Nil = Z

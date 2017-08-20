@@ -64,11 +64,11 @@ id :: forall a . a -> a
 id x = x
 
 showT :: Term (List Char) -> List Char
-showT = gfoldT id showP (\ x -> Cons LL x) showI
+showT = gfoldT (\ x -> id x) (\ x y -> showP x y) (\ x -> Cons LL x) (\ x -> showI x)
 
 
 joinT :: forall a . Term (Term a) -> Term a
-joinT x = gfoldT id App Lam distT x
+joinT x = gfoldT (\ x -> id x) App Lam distT x
 
 distT :: forall a . Incr (Term a) -> Term (Incr a)
 distT Zero = Var Zero
@@ -104,10 +104,10 @@ gfoldE v a l k (AppE p1 p2) = a (gfoldE v a l k p1) (gfoldE v a l k p2)
 gfoldE v a l k (LamE t) = l (gfoldE v a l k (mapE (\ x -> k (mapI (gfoldE v a l k) x)) t))
 
 joinE :: forall a . TermE (TermE a) -> TermE a
-joinE x = gfoldE id AppE LamE VarE x
+joinE x = gfoldE (\ x -> id x) (\ x y -> AppE x y) LamE (\ x -> VarE x) x
 
 cvtE :: forall a . TermE a -> Term a
-cvtE x = gfoldE Var App (\ x -> Lam (joinT (mapT distT x))) id x
+cvtE x = gfoldE Var App (\ x -> Lam (joinT (mapT distT x))) (\ x -> id x) x
 
 cvtBodyE :: forall a . TermE (Incr (TermE a)) -> Term (Incr a)
 cvtBodyE x = joinT (mapT distT (cvtE (mapE (mapI cvtE) x)))

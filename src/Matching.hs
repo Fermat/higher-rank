@@ -78,13 +78,13 @@ match (Var x) e | (Var x) == e = return $ [Subst []]
                 | x `elem` freeVars e = return []
                 | otherwise = return $ [Subst [(x, e)]]
 
--- implication is treated as applying  constant "->"
--- match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
---                                        s' <- mapM (\ sub -> match (apply sub a2) (apply sub b2))
---                                              s
---                                        let res = [map (\ x -> extend x sub) subs |
---                                                   sub <- s, subs <- s']
---                                        return $ concat res
+-- implication is treated as applying  constant "->", here is purely for kinding
+match (Imply a1 a2) (Imply b1 b2) = do s <- match a1 b1
+                                       s' <- mapM (\ sub -> match (apply sub a2) (apply sub b2))
+                                             s
+                                       let res = [map (\ x -> extend x sub) subs |
+                                                  sub <- s, subs <- s']
+                                       return $ concat res
 
 match (Forall x e) (Forall y e') = let e1 = apply (Subst [(x, Const x)]) e
                                        e2 = apply (Subst [(y, Const x)]) e' in
