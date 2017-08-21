@@ -71,7 +71,7 @@ reLam [] h = h
 reLam (x:xs) h = Lambda x (reLam xs h)
 
 patternVars :: Exp -> Int -> (TyEnv, Int)
-patternVars (Ann (Var x) t) i = ([(x, t)], i)
+-- patternVars (Ann (Var x) t) i = ([(x, t)], i)
 patternVars p i = let fvs = freeVars p
                       j = (i+(length fvs))-1
                       ns = [i..j]
@@ -84,6 +84,21 @@ makePatEnv (x:xs) i = let (env, j) = patternVars x i
                           (res, n) = makePatEnv xs j in
                         (env:res, n)
 
+makeLvars ((env, Var y, Var x, e):xs) n = (y, n):makeLvars xs n
+makeLvars ((env, t, Var x, e):xs) n = makeLvars xs n
+makeLvars ((env, Var y, p, e):xs) n =
+  let r = map (\(u,Var v) -> (v, n)) env in
+    r ++ (y,n):makeLvars xs n
+makeLvars [] n = []
+
+
+makePats ((t, Var x, e):xs) i = let (ps, j) = makePats xs i in (([(x, t)], t, Var x, e):ps, j)
+makePats ((t, p, e):xs) i =
+  let (env, j) = patternVars p i
+      (ps, j') = makePats xs j
+  in ((env, t, p, e):ps, j')
+makePats [] i = ([], i)
+
 annotate l = map ann l 
 ann (Ann (Var x) t, e) = (Just t, (Var x), e)
 ann (p, e) = (Nothing, p, e)
@@ -92,7 +107,7 @@ ann (p, e) = (Nothing, p, e)
 withVars ((Just t, (Var x), e):xs) i =
   let (ps, j) = withVars xs i in ((t, (Var x), e):ps, j)
 withVars ((Nothing, p, e):xs) i =
-  let (ps, j) = withVars xs (i+1) in ((Var "y"++show i++"'", p, e):ps, j)
+  let (ps, j) = withVars xs (i+1) in ((Var $ "y"++show i++"'", p, e):ps, j)
 withVars [] i = ([], i)
 
 isAtom (Const x) = True
@@ -204,9 +219,9 @@ arrange ls =  partition helper ls
   -- where helper ((p,f),e) = let (vars, h, _) = separate f
   --                              fr = freeVars f
   --                          in null (fr `intersect` (freeVars h))
-simp es = map simp' es
-simp' (Ann x _) = x
-simp' a = a
+-- simp es = map simp' es
+-- simp' (Ann x _) = x
+-- simp' a = a
 
 transit :: ResState -> [ResState]
 --transit state | trace ("transit " ++show (state) ++"\n") False = undefined
@@ -285,9 +300,25 @@ transit (Res pf ((Phi pos (Just goal) (Just exp@(Case e alts)) gamma lvars):phi)
 transit (Res pf ((Phi pos (Just goal) (Just exp@(Let defs e)) gamma lvars):phi) Nothing i) =
   let pats = annotate defs
       (pats', j) = withVars pats i
+      (tps, j') = makePats pats' j 
+      n = getValue lvars
+      len = length defs
+      lvars' = lvars ++ makeLvars tps n
+      posLeft =  map (\ p -> pos++[0, p, 0]) [0..(len-1)]
+      posRight = map (\ p -> pos++[0, p, 1]) [0..(len-1)]
+      leftEnv = map (\(po, (env, t, p, e)) -> (Phi po (Just t) (Just p) (env++gamma) lvars')) 
+                $ zip posLeft tps
+      rightEnv = map (\(po, (env, t, p, e)) -> (Phi po (Just t) (Just e) (env++gamma) lvars'))
+                 $ zip posRight tps
+      defsEnv = leftEnv ++ rightEnv
+      thetas = concat $ map (\ (a,b,c,d) -> a) tps
+      newEnv = defsEnv ++ [(Phi (pos++[1]) (Just goal) (Just e) (thetas ++gamma) lvars')]
+      newLet = Let (map (\ (a,b,c,d) -> (b, b)) tps) goal 
+      pf' = replace pf pos newLet
+  in [(Res pf' (newEnv++phi) Nothing j')]
       
-
 --------------------
+{-
   let pats = map fst defs
       defends = map snd defs
       (thetas, j) = makePatEnv pats i
@@ -311,7 +342,7 @@ transit (Res pf ((Phi pos (Just goal) (Just exp@(Let defs e)) gamma lvars):phi) 
       newLet = Let (map (\ x -> (x, x)) tyvars') goal 
       pf' = replace pf pos newLet
   in [(Res pf' (newEnv++phi) Nothing j')]
-
+-}
 transit (Res pf ((Phi pos (Just goal@(Forall x y)) (Just exp) gamma lvars):phi) Nothing i)
   | isAtom exp =
       let y = getName exp
