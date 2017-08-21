@@ -1,0 +1,17 @@
+module Primitive where
+data F :: * -> * where
+data Void :: * where
+primitive l :: forall x . F x -> F x
+primitive l'' :: (forall x . F x) -> forall x . F x
+
+primitive what :: (forall x . F x) -> Void
+
+primitive fix :: forall a . (a -> a) -> a
+-- fix f = f (fix f)
+
+l' :: Void
+-- l' = what (fix l'')
+l' = let y :: forall x . F x
+         y = fix l
+     in what y
+
