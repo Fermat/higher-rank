@@ -84,6 +84,17 @@ makePatEnv (x:xs) i = let (env, j) = patternVars x i
                           (res, n) = makePatEnv xs j in
                         (env:res, n)
 
+annotate l = map ann l 
+ann (Ann (Var x) t, e) = (Just t, (Var x), e)
+ann (p, e) = (Nothing, p, e)
+
+
+withVars ((Just t, (Var x), e):xs) i =
+  let (ps, j) = withVars xs i in ((t, (Var x), e):ps, j)
+withVars ((Nothing, p, e):xs) i =
+  let (ps, j) = withVars xs (i+1) in ((Var "y"++show i++"'", p, e):ps, j)
+withVars [] i = ([], i)
+
 isAtom (Const x) = True
 isAtom (Var _) = True
 isAtom _ = False
@@ -272,6 +283,11 @@ transit (Res pf ((Phi pos (Just goal) (Just exp@(Case e alts)) gamma lvars):phi)
   in [(Res pf' (newEnv++phi) Nothing j)]
 
 transit (Res pf ((Phi pos (Just goal) (Just exp@(Let defs e)) gamma lvars):phi) Nothing i) =
+  let pats = annotate defs
+      (pats', j) = withVars pats i
+      
+
+--------------------
   let pats = map fst defs
       defends = map snd defs
       (thetas, j) = makePatEnv pats i
