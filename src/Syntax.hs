@@ -126,6 +126,7 @@ data Nameless = V Int
               | AP Nameless Nameless
               | IMP Nameless Nameless
               | LAM Nameless
+              | S
              deriving (Show, Eq)
 
 type BindCxt a = Reader [(Name, Int)] a
@@ -133,6 +134,7 @@ type BindCxt a = Reader [(Name, Int)] a
 -- debruijn representation of a type expression
 debruijn :: Exp -> BindCxt Nameless
 debruijn (Const x) = return $ C x
+debruijn (Star) = return $ S
 
 debruijn (Var x) = 
   do n' <- asks (lookup x)
