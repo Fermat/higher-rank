@@ -317,32 +317,6 @@ transit (Res pf ((Phi pos (Just goal) (Just exp@(Let defs e)) gamma lvars):phi) 
       pf' = replace pf pos newLet
   in [(Res pf' (newEnv++phi) Nothing j')]
       
---------------------
-{-
-  let pats = map fst defs
-      defends = map snd defs
-      (thetas, j) = makePatEnv pats i
-      len = length pats
-      pats' = simp pats
-      j' = j + len
-      tyvars = map (\ x -> "y"++show x ++ "'") [j.. (j'-1)]
-      tyvars' = map Var tyvars
-      n = getValue lvars
-      tyvarsind = map (\ x -> (x, n)) tyvars
-      newlvars =  map (\(Var x) -> (x, n)) (map snd $ filter (\ (x, e) -> isVar e) $ concat thetas)
-      lvars' = lvars++ tyvarsind ++ newlvars 
-      posLeft =  map (\ p -> pos++[0, p, 0]) [0..(len-1)]
-      posRight = map (\ p -> pos++[0, p, 1]) [0..(len-1)]
-      leftEnv = map (\(y , (po, p)) -> (Phi po (Just y) (Just p) (concat thetas++gamma) lvars')) $
-                zip tyvars' $ zip posLeft pats' 
-      rightEnv = map (\(y, (po, e')) -> (Phi po (Just y) (Just e') (concat thetas++gamma) lvars')) $
-                 zip tyvars' $ zip posRight defends 
-      defsEnv =  leftEnv ++ rightEnv
-      newEnv = defsEnv ++ [(Phi (pos++[1]) (Just goal) (Just e) (concat thetas ++gamma) lvars')]
-      newLet = Let (map (\ x -> (x, x)) tyvars') goal 
-      pf' = replace pf pos newLet
-  in [(Res pf' (newEnv++phi) Nothing j')]
--}
 transit (Res pf ((Phi pos (Just goal@(Forall x y)) (Just exp) gamma lvars):phi) Nothing i)
   | isAtom exp =
       let y = getName exp

@@ -22,9 +22,8 @@ main = flip catches handlers $ do
              Left e -> throw e
              Right a -> do putStrLn $ "Parsing success! \n"
                            print $ disp a
-                           let kEnv = getKindDef a
-                           kindData a kEnv
-                           kindFunc a kEnv
+                           kindData a 
+                           kindFunc a 
                            let res = checkDecls a
                            case res of
                              Left e -> throw e

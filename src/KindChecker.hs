@@ -18,7 +18,7 @@ wfKind :: Exp -> Bool
 wfKind Star = True
 wfKind (Imply x y) = wfKind x && wfKind y
 
-type KCMonad a = StateT Int (StateT Subst (ReaderT KindDef (Either Doc))) a  
+type KCMonad a = StateT Int (StateT KindDef (ReaderT KindDef (Either Doc))) a  
 
 grounding :: Exp -> Exp
 grounding (Var x) = Star
@@ -42,13 +42,15 @@ inferKind (Const x) | isUpper (head x) =
                                       text "undefined type constructor:" <+> disp x
 
 inferKind (Var x) = do
-  Subst env <- lift get
+  env <- lift get
   case lookup x env of
-    Nothing -> do
-      ki <- makeName "k"
-      let kind = Var ki
-      lift $ modify (\ (Subst e) -> Subst $ (x, kind):e)
-      return kind
+    Nothing -> throwError $
+               text "Kinding error: " <+>
+               text "unbound type variable:" <+> disp x
+      -- ki <- makeName "k"
+      -- let kind = Var ki
+      -- lift $ modify (\ (Subst e) -> Subst $ (x, kind):e)
+      -- return kind
     Just k -> return k  
 
 inferKind (App f1 f2) = do
@@ -61,19 +63,21 @@ inferKind (App f1 f2) = do
                                                   disp f2 <+> text "::" <+> disp k2)
     
     x:_ -> do
-      Subst env <- lift get
+      env <- lift get
       let env' = map (\(y, e) -> (y, apply x e)) env
-      lift $ put (Subst env') 
+      lift $ put (env') 
       return $ apply x (Var k) 
 
 
-inferKind (Lambda (Var x) t) = do
-  lift $ modify (\ (Subst e) -> Subst $ (x, Star): e)
-  k <- inferKind t
-  let k' = grounding k
-  return $ Imply Star k'
+-- inferKind (Lambda (Var x) t) = do
+--   lift $ modify (\ (Subst e) -> Subst $ (x, Star): e)
+--   k <- inferKind t
+--   let k' = grounding k
+--   return $ Imply Star k'
 
 inferKind (Forall x f) = do
+  k <- makeName "k"
+  lift $ modify (\e -> (x, Var k): e)
   k <- inferKind f
   let k' = grounding k
   case k' of
@@ -93,25 +97,27 @@ inferKind (Imply f1 f2) = do
 
 
 runKinding :: Exp -> KindDef -> Either Doc Exp
-runKinding t g = do (k, sub) <- runReaderT (runStateT (evalStateT (inferKind t) 0) (Subst [])) g 
+runKinding t g = do (k, sub) <- runReaderT (runStateT (evalStateT (inferKind t) 0) []) g 
                     return k
 
 instance Exception Doc 
 
 getKindDef a = [(d, k) | (DataDecl (Const d) k ls)<- a ]
 
-kindData :: [Decl] -> KindDef -> IO ()
-kindData a g = do
+kindData :: [Decl] -> IO ()
+kindData a = do
   let ds = concat [cons | (DataDecl _ _ cons) <- a]
+      g = getKindDef a
       res = mapM (\ (Const x, e) -> runKinding e g `catchError` (\ err -> throwError (err $$ text "in the type of the data constructor" <+> text x))) ds
   case res  of
     Left e -> throw e
     Right ks -> do
       putStrLn $ "kinding success for datatypes! \n"
 
-kindFunc :: [Decl] -> KindDef -> IO ()
-kindFunc a g = do
+kindFunc :: [Decl] -> IO ()
+kindFunc a = do
   let ds = [(f, t) | (FunDecl (Var f) t _) <- a]
+      g = getKindDef a
   case mapM (\ (x, e) -> (runKinding e g) `catchError` (\ e -> throwError (e $$ text "in the type of the function" <+> text x))) ds of
     Left e -> throw e
     Right ks -> do
