@@ -2,7 +2,7 @@
 module Main where
 import Parser(parseModule)
 import Pretty(disp)
-import KindChecker(kindData, kindFunc, getKindDef)
+import KindChecker(kinding)
 import TypeChecker(checkDecls)
 
 
@@ -22,8 +22,7 @@ main = flip catches handlers $ do
              Left e -> throw e
              Right a -> do putStrLn $ "Parsing success! \n"
                            print $ disp a
-                           kindData a 
-                           kindFunc a 
+                           kinding a 
                            let res = checkDecls a
                            case res of
                              Left e -> throw e
