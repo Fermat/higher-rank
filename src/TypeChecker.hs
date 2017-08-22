@@ -341,9 +341,10 @@ transit (Res pf ((Phi pos (Just goal@(Forall x y)) (Just exp) gamma lvars):phi) 
                      let lvars' = applyS sub lvars
                          gamma' = map (\ (x, t) -> (x, normalize $ apply (Subst sub) t) ) gamma
                          pf' = apply (Subst sub) pf
+                         pf'' = replace pf' pos exp
                      in 
                        case applyPhi sub phi of 
-                         Right p -> return $ Res pf' (p++[Phi pos Nothing Nothing gamma' lvars']) Nothing i
+                         Right p -> return $ Res pf'' (p++[Phi pos Nothing Nothing gamma' lvars']) Nothing i
                          Left m' ->
                            let mess = (text "globally, when matching" <+> disp f) $$
                                       (text "against"<+> disp (goal)) $$
