@@ -23,7 +23,7 @@ grounding Star = Star
 makeName name = 
   do m <- get
      modify (+1)
-     return $ name ++ show m
+     return $ name ++ show m ++ "'"
   
 inferKind :: Exp -> KCMonad Exp
 inferKind (Const x) = 

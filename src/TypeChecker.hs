@@ -340,7 +340,7 @@ transit (Res pf ((Phi pos (Just goal@(Forall x y)) (Just exp) gamma lvars):phi) 
                    if scopeCheck lvars sub then
                      let lvars' = applyS sub lvars
                          gamma' = map (\ (x, t) -> (x, normalize $ apply (Subst sub) t) ) gamma
-                         pf' = apply (Subst sub) pf
+                         pf' = normalize $ apply (Subst sub) pf
                          pf'' = replace pf' pos exp
                      in 
                        case applyPhi sub phi of 
