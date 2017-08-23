@@ -143,3 +143,10 @@ instance Disp ParseError where
   where sem = text $ showErrorMessages "or" "unknown parse error"
               "expecting" "unexpected" "end of input"
               (errorMessages pe)
+
+
+
+printTyped pfs = vcat (map (\(f,t,e) -> disp f <+> text "::" <+>
+                                        disp t <+> text "=" $$
+                                        nest 2 (disp e) <+> text "\n")
+                       pfs)

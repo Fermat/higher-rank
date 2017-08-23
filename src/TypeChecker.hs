@@ -22,12 +22,18 @@ makeTyEnv ((FunDecl (Var f) t _):xs) = (f, t):makeTyEnv xs
 makeTyEnv ((Prim (Var f) t):xs) = (f, t):makeTyEnv xs
 
 makeLam pats e = foldr (\ p e' -> Lambda p e') e pats
-  
-checkDecls a = let tyEnv = makeTyEnv a
-                   funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d)) defs |
-                                       (FunDecl (Var f) t defs) <- a]
-              in mapM (typeCheck tyEnv) funcDefs
 
+checkDecls :: [Decl] -> Either Doc [(Exp, Exp, Exp)]  
+checkDecls a = let tyEnv = makeTyEnv a
+                   funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d, f)) defs |
+                                       (FunDecl (Var f) t defs) <- a]
+              in mapM (\ (t, e, f) ->
+                         do{e' <- typeCheck tyEnv (t, e);
+                            return (Var f, t, e')
+                           })
+                 funcDefs
+
+typeCheck :: TyEnv -> (Exp, Exp) -> Either Doc Exp 
 typeCheck env (goal, e) =
   let phi = Phi [] (Just goal) (Just e) env []
       init = Res goal [phi] Nothing 0 in

@@ -125,6 +125,6 @@ kinding a =
                          ps in
                 case res2 of
                   Left e -> throw e
-                  Right _ -> print "kinding success!\n"
+                  Right _ -> print $ text "kinding success!\n"
 
       

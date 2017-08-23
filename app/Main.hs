@@ -1,7 +1,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 module Main where
 import Parser(parseModule)
-import Pretty(disp)
+import Pretty(printTyped, disp)
 import KindChecker(kinding)
 import TypeChecker(checkDecls)
 
@@ -26,8 +26,12 @@ main = flip catches handlers $ do
                            let res = checkDecls a
                            case res of
                              Left e -> throw e
-                             Right pfs -> print $ vcat (map disp pfs)
-                                          -- vcat (map (\ x -> brackets $ vcat (map disp x)) pfs)
+                             Right pfs ->
+                               do print $ text "Type checking success, the following are the annotatated program: \n"
+                                  print $ text "-----------------------------------------\n"
+                             
+                                  print $ printTyped pfs
+
 
 
     _ -> putStrLn "usage: higher-rank <filename>"
