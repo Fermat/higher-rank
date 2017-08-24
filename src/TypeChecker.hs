@@ -191,17 +191,6 @@ takeOnes n | n > 1 = (take (n-1) stream1):takeOnes (n-1)
 makeZeros 0 = []
 makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
-                                       
--- contract :: [(Exp, Int)] -> [(Exp, Int)]
--- contract lvars =
---   nub [(x, v) | (x, n) <- lvars,
---         let v = minimum $ lookup' x lvars ]
---   where lookup' :: Exp -> [(Exp, Int)] -> [Int]
---         lookup' x ((y, n):xs) =
---           if x == y then n : lookup' x xs
---           else lookup' x xs
---         lookup' x [] = []
-
 applyS :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)]
 applyS sub l = applyS' sub l []
   where applyS' :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)] -> [(Exp, Int)]
@@ -227,17 +216,6 @@ applyS sub l = applyS' sub l []
                in ((Var x, v) : res, n'')
         updateS fvs [] n = ([], n)
 
--- applyS sub lvars =
---   let dom = map fst sub
---       lv = map fst lvars
---       lsigma = [ (b, min na nb)| a <- dom, a `elem` lv, let (Just na) = lookup a lvars,
---                                 let fvs = freeVars (apply (Subst sub) (Var a)), b <- fvs, b `elem` lv,
---                                       let (Just nb) = lookup b lvars
---                                   ]
---       ls' = contract lsigma
---       vn = map fst ls'
---       es = [(a, n) | (a, n) <- lvars, not $ a `elem` vn]
---   in ls' ++ es 
 
 scopeCheck :: [(Exp, Int)] -> [(Name, Exp)] -> Bool
 scopeCheck lvars [] = True 
@@ -253,12 +231,6 @@ scopeCheck lvars ((x, e):xs) =
             Just n' -> n' < n && checkEigen ys lvars n
         checkEigen [] lvars n = True
   
--- scopeCheck lvars sub =
---   let dom = map fst lvars
---   in and [ne < nx | (x, t) <- sub, x `elem` dom,
---            let (Just nx) = lookup x lvars,
---                  let evars = eigenVar t,
---                        e <- evars, e `elem` dom, let (Just ne) = lookup e lvars]
                          
 applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
 applyPhi sub ls =
@@ -714,7 +686,6 @@ transit (Res pf
           
         app1 fresh head'' body'' f v xs j i' =
           let glVars = map (\ i -> Var $ "y"++show i++"'") [i'..j-1]
---              glVars' = map (\ i -> "y"++show i++"'") [i'..j-1]
               goal' = reImp glVars goal
               ss = runMatch head'' goal' in
             case ss of
@@ -732,7 +703,6 @@ transit (Res pf
                 in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
               _ ->
                 do Subst sub <- ss
-                   -- let subFCheck = [(x, y)|(x, y) <- sub, not $ x `elem` fresh ] 
                    if scopeCheck lvars sub
                      then let dom = map fst sub -- freeVars head''
                               body' = map normalize $ (map (apply (Subst sub)) body'')
