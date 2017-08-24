@@ -24,28 +24,30 @@ makeTyEnv ((Prim (Var f) t):xs) = (f, t):makeTyEnv xs
 makeLam pats e = foldr (\ p e' -> Lambda p e') e pats
 
 checkDecls :: [Decl] -> Either Doc [(Exp, Exp, Exp)]  
-checkDecls a = let tyEnv = makeTyEnv a
-                   funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d, f)) defs |
-                                       (FunDecl (Var f) t defs) <- a]
-              in mapM (\ (t, e, f) ->
-                         do{e' <- typeCheck tyEnv (t, e);
-                            return (Var f, t, e')
-                           })
-                 funcDefs
+checkDecls a =
+  let tyEnv = makeTyEnv a
+      funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d, f)) defs |
+                          (FunDecl (Var f) t defs) <- a]
+  in mapM (\ (t, e, f) ->
+              do{e' <- typeCheck tyEnv (t, e);
+                 return (Var f, t, e')
+                })
+     funcDefs
 
 typeCheck :: TyEnv -> (Exp, Exp) -> Either Doc Exp 
 typeCheck env (goal, e) =
   let phi = Phi [] (Just goal) (Just e) env []
-      init = Res goal [phi] Nothing 0 in
-    ersm [init] 
+      init = Res goal [phi] Nothing 0
+  in ersm [init] 
+    
 
--- subgoal state    
+-- subgoals state    
 data Phi = Phi{
               position :: Pos,
               currentGoal :: Maybe Exp,
               currentProg :: Maybe Exp,
               env :: TyEnv,
-              scope :: [(Name, Int)] }
+              scope :: [(Exp, Int)] }
            deriving (Show)
 
 -- Resolution state
@@ -64,9 +66,10 @@ getVars :: Exp -> ([Name],Exp)
 getVars (Forall x t) = let (xs, t') = getVars t in (x:xs, t')
 getVars t = ([], t)
 
-separate f = let (vars, imp) = getVars f
-                 (bs, h) = getHB imp
-             in (vars, h, bs)
+separate f =
+  let (vars, imp) = getVars f
+      (bs, h) = getHB imp
+  in (vars, h, bs)
                 
 reImp :: [Exp] -> Exp -> Exp
 reImp [] h = h
@@ -77,28 +80,34 @@ reLam [] h = h
 reLam (x:xs) h = Lambda x (reLam xs h)
 
 patternVars :: Exp -> Int -> (TyEnv, Int)
--- patternVars (Ann (Var x) t) i = ([(x, t)], i)
-patternVars p i = let fvs = freeVars p
-                      j = (i+(length fvs))-1
-                      ns = [i..j]
-                      vars = map (\ n -> Var $ "y"++show n++"'") ns in
-                    (zip fvs vars, j+1)
+patternVars p i = 
+  let fvs = freeVars p
+      j = (i+(length fvs))-1
+      ns = [i..j]
+      vars = map (\ n -> Var $ "y"++show n++"'") ns
+  in (zip fvs vars, j+1)
+    
 
 makePatEnv :: [Exp] -> Int -> ([TyEnv], Int)
 makePatEnv [] i = ([], i)
-makePatEnv (x:xs) i = let (env, j) = patternVars x i
-                          (res, n) = makePatEnv xs j in
-                        (env:res, n)
+makePatEnv (x:xs) i =
+  let (env, j) = patternVars x i
+      (res, n) = makePatEnv xs j
+  in (env:res, n)
+    
 
-makeLvars ((env, Var y, Var x, e):xs) n = (y, n):makeLvars xs n
-makeLvars ((env, t, Var x, e):xs) n = makeLvars xs n
+makeLvars ((env, Var y, Var x, e):xs) n = (Var y, n):makeLvars xs n
 makeLvars ((env, Var y, p, e):xs) n =
-  let r = map (\(u,Var v) -> (v, n)) env in
-    r ++ (y,n):makeLvars xs n
+  let r = map (\(u, v) -> (v, n)) env
+  in r ++ (Var y,n):makeLvars xs n
+makeLvars ((env, t, Var x, e):xs) n = makeLvars xs n
 makeLvars [] n = []
 
 
-makePats ((t, Var x, e):xs) i = let (ps, j) = makePats xs i in (([(x, t)], t, Var x, e):ps, j)
+makePats ((t, Var x, e):xs) i =
+  let (ps, j) = makePats xs i
+  in (([(x, t)], t, Var x, e):ps, j)
+    
 makePats ((t, p, e):xs) i =
   let (env, j) = patternVars p i
       (ps, j') = makePats xs j
@@ -111,9 +120,11 @@ ann (p, e) = (Nothing, p, e)
 
 
 withVars ((Just t, (Var x), e):xs) i =
-  let (ps, j) = withVars xs i in ((t, (Var x), e):ps, j)
+  let (ps, j) = withVars xs i
+  in ((t, (Var x), e):ps, j)
 withVars ((Nothing, p, e):xs) i =
-  let (ps, j) = withVars xs (i+1) in ((Var $ "y"++show i++"'", p, e):ps, j)
+  let (ps, j) = withVars xs (i+1)
+  in ((Var $ "y"++show i++"'", p, e):ps, j)
 withVars [] i = ([], i)
 
 isAtom (Const x) = True
@@ -126,6 +137,7 @@ isVar _ = False
 getName (Const x) = x
 getName (Var x) = x
 getName _ = error "from get Name"
+
 -- Postion encoding scheme:
 -- App 0 1
 -- Lambda 0 1
@@ -134,30 +146,35 @@ getName _ = error "from get Name"
 
 replace :: Exp -> Pos -> Exp -> Exp
 replace e [] r = r
-replace (App t1 t2) (x:xs) r | x ==1 = App t1 (replace t2 xs r)
-                             | x ==0 = App (replace t1 xs r) t2
+replace (App t1 t2) (x:xs) r
+  | x ==1 = App t1 (replace t2 xs r)
+  | x ==0 = App (replace t1 xs r) t2
 
-replace (Lambda t t2) (x:xs) r | x == 1 = Lambda t (replace t2 xs r)
-                               | x == 0 =
-                                 case t of
-                                   Ann e ty -> Lambda (Ann (replace e xs r) ty) t2
-                                   _ -> Lambda (replace t xs r) t2
+replace (Lambda t t2) (x:xs) r
+  | x == 1 = Lambda t (replace t2 xs r)
+  | x == 0 =
+      case t of
+        Ann e ty -> Lambda (Ann (replace e xs r) ty) t2
+        _ -> Lambda (replace t xs r) t2
 
-replace (Case e alts) (x:xs) r | x == 0 = Case (replace e xs r) alts
-                               | x == 1 =
-                                   case xs of
-                                     [] -> error "internal: wrong position for case"
-                                     y:y':ys -> Case e $ replaceL y y' ys alts r
+replace (Case e alts) (x:xs) r
+  | x == 0 = Case (replace e xs r) alts
+  | x == 1 =
+      case xs of
+        [] -> error "internal: wrong position for case"
+        y:y':ys -> Case e $ replaceL y y' ys alts r
 
-replace (Let defs e) (x : xs) r | x == 1 = Let defs (replace e xs r)
-                                | x == 0 = case xs of
-                                             [] -> error "internal: wrong position for case"
-                                             y:y':ys -> Let (replaceL y y' ys defs r) e
+replace (Let defs e) (x : xs) r
+  | x == 1 = Let defs (replace e xs r)
+  | x == 0 =
+    case xs of
+      [] -> error "internal: wrong position for case"
+      y:y':ys -> Let (replaceL y y' ys defs r) e
+
 replaceL y y' ys [] r = error "internal: wrong position for case/let branch"
 replaceL 0 0 ys ((p,e):alts) r = ((replace p ys r), e):alts
 replaceL 0 1 ys ((p,e):alts) r = (p, (replace e ys r)):alts
 replaceL y y' ys (a:alts) r | y > 0 = a : replaceL (y-1) y' ys alts r
-
 
 isSingle (Var _) = True
 isSingle (Const _) = True
@@ -165,33 +182,70 @@ isSingle _ = False
 
 stream1 = 1 : stream1
 stream0 = 0 : stream0
+
 make n s | n > 0 = take (n-1) s
+
 takeOnes 1 = [[]]
 takeOnes n | n > 1 = (take (n-1) stream1):takeOnes (n-1)
+
 makeZeros 0 = []
 makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
-contract :: [(Name, Int)] -> [(Name, Int)]
-contract lvars = nub [(x, v) | (x, n) <- lvars, let v = minimum $ map snd $ filter (\ (y, n') -> y == x) lvars ]
+                                       
+contract :: [(Exp, Int)] -> [(Exp, Int)]
+contract lvars =
+  nub [(x, v) | (x, n) <- lvars,
+        let v = minimum $ lookup' x lvars ]
+  where lookup' :: Exp -> [(Exp, Int)] -> [Int]
+        lookup' x ((y, n):xs) =
+          if x == y then n : lookup' x xs
+          else lookup' x xs
+        lookup' x [] = []
 
-applyS :: [(Name, Exp)] -> [(Name, Int)] -> [(Name, Int)]
-applyS sub lvars = let dom = map fst sub
-                       lv = map fst lvars
-                       lsigma = [ (b, min na nb)| a <- dom, a `elem` lv, let (Just na) = lookup a lvars,
-                                  let fvs = freeVars (apply (Subst sub) (Var a)), b <- fvs, b `elem` lv,
-                                      let (Just nb) = lookup b lvars
-                                  ]
-                       ls' = contract lsigma
-                       vn = map fst ls'
-                       es = [(a, n) | (a, n) <- lvars, not $ a `elem` vn]
-                    in ls' ++ es 
+applyS :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)]
+applyS sub l = applyS' sub l []
+  where applyS' :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)] -> [(Exp, Int)]
+        applyS' sub [] store = store           
+        applyS' sub (((Const x), n):xs) store = ((Const x), n): applyS' sub xs store
+        applyS' sub (((Var x), n):xs) store =
+          case lookup x sub of
+            Nothing -> applyS' sub xs (((Var x), n):store)
+            Just e ->
+              let fvs = freeVars e
+                  (store', n') = updateS fvs store n
+                  (xs', n'') = updateS fvs xs n'
+              in applyS' sub xs' store'
+        updateS fvs ((Const x, v):l) n =
+          let (res, n') = updateS fvs l n
+          in ((Const x, v):res, n')
+        updateS fvs ((Var x, v):l) n =
+          if x `elem` fvs
+          then let n' = min n v
+                   (res, n'') = updateS fvs l n'
+               in ((Var x, n''):res, n'')
+          else let (res, n'') = updateS fvs l n
+               in ((Var x, v) : res, n'')
+        updateS fvs [] n = ([], n)
+
+-- applyS sub lvars =
+--   let dom = map fst sub
+--       lv = map fst lvars
+--       lsigma = [ (b, min na nb)| a <- dom, a `elem` lv, let (Just na) = lookup a lvars,
+--                                 let fvs = freeVars (apply (Subst sub) (Var a)), b <- fvs, b `elem` lv,
+--                                       let (Just nb) = lookup b lvars
+--                                   ]
+--       ls' = contract lsigma
+--       vn = map fst ls'
+--       es = [(a, n) | (a, n) <- lvars, not $ a `elem` vn]
+--   in ls' ++ es 
 
 scopeCheck :: [(Name, Int)] -> [(Name, Exp)] -> Bool
-scopeCheck lvars sub = let dom = map fst lvars in
-                         and [ne < nx | (x, t) <- sub, x `elem` dom,
-                              let (Just nx) = lookup x lvars,
-                                  let evars = eigenVar t,
-                                  e <- evars, e `elem` dom, let (Just ne) = lookup e lvars]
+scopeCheck lvars sub =
+  let dom = map fst lvars
+  in and [ne < nx | (x, t) <- sub, x `elem` dom,
+           let (Just nx) = lookup x lvars,
+                 let evars = eigenVar t,
+                       e <- evars, e `elem` dom, let (Just ne) = lookup e lvars]
                          
 applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
 applyPhi sub ls = let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <- ls]
