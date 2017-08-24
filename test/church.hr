@@ -1,0 +1,10 @@
+module church where
+
+zero :: forall x . (x -> x) -> x -> x
+zero = \ s z -> z
+
+succ :: (forall x . (x -> x) -> x -> x) -> (forall x . (x -> x) -> x -> x)
+succ n = \ s z -> s (n s z)
+
+add :: (forall x . (x -> x) -> x -> x) -> (forall x . (x -> x) -> x -> x) -> (forall x . (x -> x) -> x -> x)
+add n m = n succ m
