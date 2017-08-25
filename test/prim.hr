@@ -19,8 +19,8 @@ l' = what (fix l'')
 -- u :: forall x . F x -> F x
 -- u = u
 
-u :: forall x . x
+u :: forall x . F x
 u = u 
 
-v :: 
+v :: forall x . F (F x) 
 v = u

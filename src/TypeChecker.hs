@@ -289,6 +289,8 @@ transit (Res pf
           (lvars++ absVars)):phi)
        Nothing (i+lv))]
 
+
+
 transit (Res pf
           ((Phi pos
              (Just goal@(Imply _ _))
@@ -401,7 +403,7 @@ transit (Res pf
       
 transit (Res pf
           ((Phi pos
-             (Just goal@(Forall x y))
+             (Just goal)
              (Just exp) gamma lvars):phi)
           Nothing i)
   | isAtom exp =
@@ -411,128 +413,117 @@ transit (Res pf
           let m' = Just $ text "can't find" <+> text y
                    <+> text "in the environment" 
           in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
-        Just f ->
-          let ss = runMatch f goal in
-            case ss of
-              [] ->
-                let m' = Just $ text "can't match" <+> disp f $$
-                         text "against" <+> disp goal $$
-                         (nest 2 (text "when applying" <+>text y <+> text ":"
-                                   <+> disp f)) $$
-                         (nest 2 $ text "current mixed proof term" $$
-                           nest 2 (disp pf))
-                in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
-              _ ->
-                do Subst sub <- ss
-                   if scopeCheck lvars sub then
-                     let lvars' = applyS sub lvars
-                         gamma' = map (\ (x, t) ->
-                                          (x, normalize $ apply (Subst sub) t) )
-                                  gamma
-                         pf' = normalize $ apply (Subst sub) pf
-                         pf'' = replace pf' pos exp
-                     in 
-                       case applyPhi sub phi of 
-                         Right p ->
-                           return (Res pf''
-                                    (p++[Phi pos Nothing Nothing gamma' lvars'])
-                                    Nothing i)
-                         Left m' ->
-                           let mess =
-                                 (text "globally, when matching" <+> disp f) $$
-                                 (text "against"<+> disp (goal)) $$
-                                 (nest 2 (text "when applying" <+> text y
-                                           <+> text ":" <+> disp f)) $$
-                                 (nest 2 (text "when applying substitution"
-                                           <+> text "[" <+> disp sub <+> text "]")) $$
-                                 (nest 2 $ text "current variables list:" $$
-                                  nest 2 (hsep $ map (\(x,i) ->
-                                                         parens $ disp x <+> comma <+> int i)
-                                           lvars)) $$
-                                 (nest 2 $ text "the current mixed proof term:" $$
-                                   nest 2 (disp pf))
-                               m1 = m' $$ nest 2 mess
-                           in [Res pf
-                                ((Phi pos
-                                   (Just goal)
-                                   (Just exp) gamma lvars):phi)
-                                (Just m1) i]                         
+        Just f | isVar f ->
+            let sub = [(getName f, goal)] in
+            if scopeCheck lvars sub then
+              let lvars' = applyS sub lvars
+                  gamma' = map (\ (x, t) ->
+                                   (x, apply (Subst sub) t) )
+                           gamma
+                  pf' = apply (Subst sub) pf
+                  pf'' = replace pf' pos exp
+              in case applyPhi sub phi of 
+                   Right p ->
+                     return (Res pf''
+                              (p++[Phi pos Nothing Nothing gamma' lvars'])
+                              Nothing i)
+                   Left m' ->
+                     let mess =
+                           (text "globally, when matching" <+> disp f) $$
+                           (text "against"<+> disp (goal)) $$
+                           (nest 2 (text "when applying" <+> text y
+                                     <+> text ":" <+> disp f)) $$
+                           (nest 2 (text "when applying substitution"
+                                     <+> text "[" <+> disp sub <+> text "]")) $$
+                           (nest 2 $ text "current variables list:" $$
+                             nest 2 (hsep $ map (\(x,i) ->
+                                                    parens $ disp x <+> comma <+> int i)
+                                      lvars)) $$
+                           (nest 2 $ text "the current mixed proof term:" $$
+                             nest 2 (disp pf))
+                         m1 = m' $$ nest 2 mess
+                     in [Res pf
+                          ((Phi pos
+                             (Just goal)
+                             (Just exp) gamma lvars):phi)
+                          (Just m1) i]                         
                              
-                     else
-                     let mess = text "scope error when matching" <+> disp f $$
-                                text "against"<+> disp (goal)$$
-                                (nest 2 (text "when applying" <+> text y <+> text ":"
-                                          <+> disp f)) $$
-                                (nest 2 (text "when applying substitution" <+> text "["
-                                          <+> disp sub <+> text "]")) $$
-                                (nest 2 $ text "current variables list:" $$
-                                  nest 2 (hsep $ map (\(x,i) ->
-                                                         parens $ disp x <+> comma <+> int i)
-                                           lvars)) $$
-                                 (nest 2 $ text "the current mixed proof term:" $$
-                                   nest 2 (disp pf))
-                      in [Res pf
-                           ((Phi pos
-                              (Just goal)
-                              (Just exp) gamma lvars):phi)
-                           (Just mess) i]
-
-transit (Res pf
-         ((Phi pos
-            (Just goal)
-            (Just exp) gamma lvars):phi)
-          Nothing i)
-  | isAtom exp =
-    let z = getName exp
-    in 
-    case lookup z gamma of
-       Nothing ->
-         let m' = Just $ text "can't find" <+> text z
-               <+> text "in the environment" 
-         in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
-       Just f ->
-         let (vars, imp) = getVars f
-             fresh = map (\ (v, j) -> v ++ show j ++ "'") $ zip vars [i..]
-             fresh' = map Var fresh
-             renaming = zip vars fresh'
-             imp' = apply (Subst renaming) imp
-             i' = i + length vars
-             ss = runMatch imp' goal
-         in case ss of
+            else
+              let mess = text "scope error when matching" <+> disp f $$
+                         text "against"<+> disp (goal)$$
+                         (nest 2 (text "when applying" <+> text y <+> text ":"
+                                   <+> disp f)) $$
+                         (nest 2 (text "when applying substitution" <+> text "["
+                                   <+> disp sub <+> text "]")) $$
+                         (nest 2 $ text "current variables list:" $$
+                           nest 2 (hsep $ map (\(x,i) ->
+                                                 parens $ disp x <+> comma <+> int i)
+                                    lvars)) $$
+                         (nest 2 $ text "the current mixed proof term:" $$
+                           nest 2 (disp pf))
+              in [Res pf
+                   ((Phi pos
+                      (Just goal)
+                      (Just exp) gamma lvars):phi)
+                   (Just mess) i]
+                         
+        Just f | otherwise ->
+          let (vars, imp) = getVars goal
+              lv = length vars
+              absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
+              absNames' = map Const absNames
+              absVars = zip absNames' [getValue lvars ..]
+              sub = zip vars absNames'
+              imp' = apply (Subst sub) imp
+              newAbs = foldr (\ a b -> Lambda (Var a) b) imp' absNames
+              pf1 = replace pf pos newAbs
+              pos' = pos ++ take lv stream1
+              i1 = i+lv
+              pos1 = pos'
+              goal1 = imp'
+              lvars1 = lvars++absVars
+              (vars2, imp2) = getVars f
+              fresh = map (\ (v, j) -> v ++ show j ++ "'") $ zip vars2 [i1..]
+              fresh' = map Var fresh
+              renaming = zip vars2 fresh'
+              imp2' = apply (Subst renaming) imp2
+              i' = i1 + length vars
+              ss = runMatch imp2' goal1
+          in case ss of
               [] ->
-                let m' = Just $ text "can't match" <+> disp imp' $$
-                         text "against" <+> disp goal $$
-                         (nest 2 (text "when applying" <+>text z <+> text ":"
+                let m' = Just $ text "can't match" <+> disp imp2' $$
+                         text "against" <+> disp goal1 $$
+                         (nest 2 (text "when applying" <+>text y <+> text ":"
                                    <+> disp f)) $$
                          (nest 2 $ text "current mixed proof term" $$
                           nest 2 (disp pf))
                 in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
               _ ->
                 do Subst sub' <- ss
-                   if scopeCheck lvars sub'
+                   if scopeCheck lvars1 sub'
                      then
-                     let pf' = normalize $ apply (Subst sub') pf
+                     let pf' = normalize $ apply (Subst sub') pf1
                          np = ([ s | r <- fresh,
                                       let s = case lookup r sub' of
                                                 Nothing -> (Var r)
                                                 Just t -> t])
                          contm = foldl' (\ z x -> App z x) exp np     
-                         pf'' = replace pf' pos contm
-                         n = getValue lvars
+                         pf'' = replace pf' pos1 contm
+                         n = getValue lvars1
                          freshlvars = map (\ x -> (x, n)) fresh'
                          gamma' = map (\ (x, t) -> (x, normalize $ apply (Subst sub') t)) gamma
-                         lvars' = applyS sub' (lvars++freshlvars)
+                         lvars' = applyS sub' (lvars1++freshlvars)
                          phi' = applyPhi sub' phi 
                      in case phi' of
                           Right p ->
                             return (Res pf''
-                                     (p++[Phi pos Nothing Nothing gamma' lvars'])
+                                     (p++[Phi pos1 Nothing Nothing gamma' lvars'])
                                      Nothing i')
                           Left m' ->
                             let mess =
-                                  (text "globally, when matching" <+> disp imp') $$
-                                  (text "against"<+> disp (goal)) $$
-                                  (nest 2 (text "when applying" <+> text z
+                                  (text "globally, when matching" <+> disp imp2') $$
+                                  (text "against"<+> disp (goal1)) $$
+                                  (nest 2 (text "when applying" <+> text y
                                             <+> text ":" <+> disp f)) $$
                                   (nest 2 (text "when applying substitution"
                                             <+> text "[" <+> disp sub' <+> text "]")) $$
@@ -548,16 +539,16 @@ transit (Res pf
                                     (Just exp) gamma lvars):phi)
                                  (Just m1) i]
                      else
-                     let mess = text "scope error when matching" <+> disp (imp') $$
-                                text "against"<+> disp (goal)$$
-                                (nest 2 (text "when applying" <+> text z <+> text ":"
+                     let mess = text "scope error when matching" <+> disp (imp2') $$
+                                text "against"<+> disp (goal1)$$
+                                (nest 2 (text "when applying" <+> text y <+> text ":"
                                           <+> disp f)) $$
                                 (nest 2 (text "when applying substitution" <+> text "["
                                          <+> disp sub' <+> text "]")) $$
                                 (nest 2 $ text "current variables list:" $$
                                   nest 2 (hsep $ map (\(x,i) ->
                                                          parens $ disp x <+> comma <+> int i)
-                                           lvars)) $$
+                                           lvars1)) $$
                                 (nest 2 $ text "the current mixed proof term:" $$
                                   nest 2 (disp pf))
                      in [Res pf
