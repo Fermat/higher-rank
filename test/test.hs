@@ -17,17 +17,22 @@ l' :: Void
 l' = let y :: forall x . F x
          y = fix l
      in what y
+u :: forall x . F x
+u = u -- fix l''
+
+v :: forall x . F (F x)
+v = u
 
 type Nat = forall x . (x -> x) -> x -> x
 
-zero :: Nat 
-zero = \ s z -> z
+-- zero :: Nat 
+-- zero = \ s z -> z
 
-suc :: Nat -> Nat
-suc n = \ s z -> s (n s z)
+-- suc :: Nat -> Nat
+-- suc n = \ s z -> s (n s z)
 
-add :: Nat -> Nat -> Nat
-add n m = n suc m
+-- add :: Nat -> Nat -> Nat
+-- add n m = n suc m
 
 -- test :: Void
 -- test = what (fix l'')

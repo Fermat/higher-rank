@@ -16,5 +16,11 @@ l' = what (fix l'')
 --      in what y
 
 
-u :: forall x . F x -> F x
-u = u
+-- u :: forall x . F x -> F x
+-- u = u
+
+u :: forall x . x
+u = u 
+
+v :: 
+v = u
