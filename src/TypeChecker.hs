@@ -544,6 +544,105 @@ transit (Res pf
                           head'' = apply (Subst renaming) head
                           n = length xs
                           l = length body
+                          j = if l <= n then i' + (n-l) else i'
+                          glVars = map (\ i -> Var $ "y"++show i++"'") [i'..j-1]
+                          goal' = reImp glVars goal
+                          newHead = if n < l then reImp (drop n body'') head'' else head''
+                          ss = runMatch newHead goal'
+                      in case ss of
+                           [] ->
+                             let m' = matchError newHead goal' v f pf 
+                             in [(Res pf
+                                  ((Phi pos
+                                    (Just goal)
+                                    (Just exp) gamma lvars):phi)
+                                   (Just m') i)]
+                           _ -> 
+                             do Subst sub <- ss
+                                if scopeCheck lvars sub
+                                  then let dom = map fst sub -- freeVars head''
+                                           body' =
+                                             if n < l then
+                                               map normalize $
+                                               (map (apply (Subst sub)) (take n body''))
+                                             else map normalize $
+                                                  (map (apply (Subst sub)) body'')
+                                           body1 = body' ++ (map (apply (Subst sub)) glVars)
+                                           np = ([ s | r <- fresh,
+                                                   let s = case lookup r sub of
+                                                         Nothing -> (Var r)
+                                                         Just t -> t])
+                                           va = getValue lvars     
+                                           lvars' = applyS sub $ lvars ++
+                                                    (map (\ x -> (Var x, va)) fresh) ++
+                                                    map (\x -> (x, va)) glVars
+                                           name = if isUpper $ Data.List.head v
+                                                  then Const v else Var v
+                                           contm = foldl' (\ z x -> App z x)
+                                                   (foldl' (\ z x -> App z x) name np)
+                                                   body1
+                                           pf' = normalize $ apply (Subst sub) pf
+                                           pf'' = replace pf' pos contm
+                                           zeros = makeZeros $ length body1
+                                           ps = map (\ x -> pos++x++[1]) zeros
+                                           gamma' = map
+                                                    (\(x, y) ->
+                                                       (x, normalize $ apply (Subst sub) y))
+                                                    gamma
+                                           (high, low) = arrange $ zip (zip ps body1) xs
+                                           (high', low') = (map (\((p, g),e ) -> (Phi p (Just g) (Just e) gamma' lvars')) high, map (\((p, g),e ) -> (Phi p (Just g) (Just e) gamma' lvars')) low)
+                                           phi' = applyPhi sub phi
+                                       in case phi' of
+                                            Right p ->
+                                              return $ Res pf'' (high'++low'++p) Nothing j
+                                            Left m' ->
+                                              let mess = text "globally," <+>
+                                                    scopeError newHead goal' f v sub lvars pf
+                                                  m1 = m' $$ nest 2 mess 
+                                              in [Res pf
+                                                  ((Phi pos
+                                                    (Just goal)
+                                                    (Just exp) gamma lvars):phi)
+                                                  (Just m1) i]
+                                  else let mess = scopeError newHead goal' f v sub lvars pf 
+                                       in [Res pf
+                                           ((Phi pos
+                                             (Just goal)
+                                             (Just exp) gamma lvars):phi)
+                                           (Just mess) i]
+
+{-
+
+transit (Res pf
+          ((Phi pos
+             (Just goal)
+             (Just exp) gamma lvars):phi)
+          Nothing i) = 
+  case flatten exp of
+    (Var v) : xs -> handle v xs
+    (Const v) : xs -> handle v xs
+    a ->
+      let m' = Just $ (text "need more information to check expression:" <+> disp exp) $$
+               (text "current goal: " <+> disp goal) $$
+               (nest 2 $ text "current mixed proof term" $$
+                 nest 2 (disp pf)) $$
+               (nest 2 $ text "current env" $$
+                 nest 2 (disp gamma)) 
+      in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+
+  where handle v xs =
+          case lookup v gamma of
+            Nothing -> let m' = Just $ text "can't find" <+> text v
+                                <+> text "in the environment" in
+                         [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+            Just f -> let (vars, head, body) = separate f
+                          i' = i + length vars
+                          fresh = map (\ (v, j) -> v ++ show j ++ "'") $ zip vars [i..]
+                          renaming = zip vars (map Var fresh)
+                          body'' = map (apply (Subst renaming)) body
+                          head'' = apply (Subst renaming) head
+                          n = length xs
+                          l = length body
                       in
                         if l <= n then let j = i' + (n-l) in
                                          app1 fresh head'' body'' f v xs j i' 
@@ -675,6 +774,7 @@ transit (Res pf
                                   (Just exp) gamma lvars):phi)
                                (Just mess) i]
 
+-}
 transit e = [e]
           
 ersm :: [ResState] -> Either Doc Exp
