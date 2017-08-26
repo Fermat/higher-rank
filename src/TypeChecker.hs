@@ -279,7 +279,15 @@ scopeError imp goal f y sub lvars pf =
              lvars)) $$
   (nest 2 $ text "the current mixed proof term:" $$
    nest 2 (disp pf))
-  
+
+matchError imp goal y f pf =
+  text "can't match" <+> disp imp $$
+  text "against" <+> disp goal $$
+  (nest 2 (text "when applying" <+>text y <+> text ":"
+           <+> disp f)) $$
+  (nest 2 $ text "current mixed proof term" $$
+   nest 2 (disp pf))
+
 transit :: ResState -> [ResState]
 --transit state | trace ("transit " ++show (state) ++"\n") False = undefined
 transit (Res pf
@@ -464,13 +472,12 @@ transit (Res pf
               ss = runMatch imp2' goal1
           in case ss of
               [] ->
-                let m' = Just $ text "can't match" <+> disp imp2' $$
-                         text "against" <+> disp goal1 $$
-                         (nest 2 (text "when applying" <+>text y <+> text ":"
-                                   <+> disp f)) $$
-                         (nest 2 $ text "current mixed proof term" $$
-                          nest 2 (disp pf))
-                in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+                let m' = matchError imp2' goal1 y f pf 
+                in [(Res pf
+                      ((Phi pos
+                         (Just goal)
+                         (Just exp) gamma lvars):phi)
+                      (Just m') i)]
               _ ->
                 do Subst sub' <- ss
                    if scopeCheck lvars1 sub'
@@ -560,13 +567,9 @@ transit (Res pf
               ss = runMatch newHead goal in
             case ss of
               [] ->
-                let m' = Just $ text "from app2, can't match" <+> disp newHead $$
-                         text "against" <+> disp goal $$
-                         (nest 2 (text "when applying" <+>text v <+> text ":"
-                                   <+> disp f)) $$
-                         (nest 2 $ text "current mixed proof term" $$
-                           nest 2 (disp pf))
-                in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+                let m' = matchError newHead goal v f pf
+                in [(Res pf
+                      ((Phi pos (Just goal) (Just exp) gamma lvars):phi) (Just m') i)]
               _ ->
                 do Subst sub <- ss
                    if scopeCheck lvars sub
@@ -619,17 +622,12 @@ transit (Res pf
               ss = runMatch head'' goal' in
             case ss of
               [] ->
-                let m' = Just $ text "from app1, can't match" <+> disp head'' $$
-                         text "against" <+> disp goal' $$
-                         (nest 2 (text "when applying" <+>text v <+> text ":"
-                                   <+> disp f)) $$
-                         (nest 2 $ text "current mixed proof term" $$
-                           nest 2 (disp pf)) $$
-                         (nest 2 $ text "current env" $$
-                           nest 2 (disp gamma)) $$
-                         (nest 2 $ text "current exp" $$
-                           nest 2 (disp exp)) 
-                in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+                let m' = matchError head'' goal' v f pf 
+                in [(Res pf
+                      ((Phi pos
+                         (Just goal)
+                         (Just exp) gamma lvars):phi)
+                      (Just m') i)]
               _ ->
                 do Subst sub <- ss
                    if scopeCheck lvars sub
