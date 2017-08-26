@@ -1,6 +1,6 @@
 * To do list
+0. Simplify error messaging and the transit function
 1. Support type synonyms
 2. Support proof checking
-3. Simplify error messaging and the transit function
-4. Support infix notations, make Bird's program more readable.
+3. Support infix notations, make Bird's program more readable.
 

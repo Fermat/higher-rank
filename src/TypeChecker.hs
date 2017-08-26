@@ -136,7 +136,7 @@ isVar _ = False
 
 getName (Const x) = x
 getName (Var x) = x
-getName _ = error "from get Name"
+getName _ = error "from getName"
 
 -- Postion encoding scheme:
 -- App 0 1
@@ -290,7 +290,6 @@ transit (Res pf
        Nothing (i+lv))]
 
 
-
 transit (Res pf
           ((Phi pos
              (Just goal@(Imply _ _))
@@ -300,49 +299,30 @@ transit (Res pf
       (vars, b) = (viewLArgs exp, viewLBody exp)
       len = length vars
       lenB = length bs
-  in
-    if len > lenB then
-      let vars' = take lenB vars
-          b' = reLam (drop lenB vars) b
-          (thetas, j) = makePatEnv vars' i
-          newlvars = map snd $ concat thetas
-          n = getValue lvars
-          indlvars = map (\ x -> (x, n)) newlvars
-          lvars' = lvars++ indlvars
-          positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes lenB)
-          pairs = zip (zip (zip positionsVars bs) vars') thetas
-          newEnv = map (\ (((pos', g), pat), thetaP) ->
-                           (Phi pos'
-                             (Just g)
-                             (Just pat)
-                             (thetaP++gamma) lvars'))
-                   pairs
-          boPos = pos++(take (lenB-1) stream1)++[1]
-          newEnv' = newEnv ++
-                    [(Phi boPos (Just h) (Just b') (concat thetas ++ gamma) lvars')]
-          newLam = foldr (\ a b -> Lambda (Ann a a) b) h bs
-          pf' = replace pf pos newLam
-      in [(Res pf' (newEnv' ++ phi) Nothing j)]
-    else let (thetas, j) = makePatEnv vars i
-             newlvars = map snd $ concat thetas
-             n' = getValue lvars
-             indvars = map (\ x -> (x, n')) newlvars
-             lvars' = lvars++indvars
-             h' = reImp (drop len bs) h  
-             positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes len)
-             pairs = zip (zip (zip positionsVars bs) vars) thetas
-             newEnv = map (\ (((pos', g), pat), thetaP) ->
-                              (Phi pos'
-                                (Just g)
-                                (Just pat)
-                                (thetaP++gamma) lvars'))
-                      pairs
-             boPos = pos++(take (len-1) stream1)++[1]
-             newEnv' = newEnv ++
-                       [(Phi boPos (Just h') (Just b) (concat thetas ++ gamma) lvars')]
-             newLam = foldr (\ a b -> Lambda (Ann a a) b) h' (take len bs)
-             pf' = replace pf pos newLam
-         in [(Res pf' (newEnv' ++ phi) Nothing j)]
+      l = min len lenB
+      (vars', b', h') =
+        if len > lenB
+        then (take lenB vars, reLam (drop lenB vars) b, h)
+        else (vars, b, reImp (drop len bs) h)
+      (thetas, j) = makePatEnv vars' i
+      newlvars = map snd $ concat thetas
+      n = getValue lvars
+      indlvars = map (\ x -> (x, n)) newlvars
+      lvars' = lvars++ indlvars
+      positionsVars = map (\ p -> pos ++ p ++[0]) (reverse $ takeOnes l)      
+      pairs = zip (zip (zip positionsVars bs) vars') thetas
+      newEnv = map (\ (((pos', g), pat), thetaP) ->
+                       (Phi pos'
+                         (Just g)
+                         (Just pat)
+                         (thetaP++gamma) lvars'))
+               pairs
+      boPos = pos++(take (l-1) stream1)++[1]
+      newEnv' = newEnv ++
+                [(Phi boPos (Just h') (Just b') (concat thetas ++ gamma) lvars')]
+      newLam = foldr (\ a b -> Lambda (Ann a a) b) h' bs
+      pf' = replace pf pos newLam
+  in [(Res pf' (newEnv' ++ phi) Nothing j)]
 
 transit (Res pf
           ((Phi pos
