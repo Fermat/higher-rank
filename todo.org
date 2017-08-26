@@ -1,6 +1,6 @@
-* To do list
-0. Simplify error messaging and the transit function
-1. Support type synonyms
-2. Support proof checking
-3. Support infix notations, make Bird's program more readable.
+* Todo list
+** DONE Simplify error messaging and the transit function 
+** TODO Support proof checking
+** TODO Support type synonyms
+** TODO Support infix notations, make Bird's program more readable.
 
