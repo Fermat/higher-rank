@@ -45,11 +45,14 @@ viewLBody x = x
 viewFVars :: Exp -> [Name]
 viewFVars (Forall n a) =
   n : viewFVars a
+viewFVars (Abs n a) =
+  n : viewFVars a
 viewFVars _ = []
 
 
 viewFBody :: Exp -> Exp
 viewFBody (Forall _ a) = viewFBody a
+viewFBody (Abs _ a) = viewFBody a
 viewFBody x = x
 
 instance Disp (Maybe Exp) where
@@ -69,6 +72,10 @@ instance Disp Exp where
     sep [dParen (precedence s - 1) s1,  
          nest 2 $ dParen (precedence s) s2]
 
+  disp (s@(TApp s1 s2)) =
+    sep [dParen (precedence s - 1) s1,   
+         nest 2 $ text "@"<>dParen (precedence s) s2]
+
   disp a@(Lambda x t) =
     let vars = viewLArgs a
         b = viewLBody a
@@ -82,6 +89,11 @@ instance Disp Exp where
     let vars = map disp $ viewFVars a
         b = viewFBody a in
     sep [text "forall" <+> sep vars <+> text ".", nest 2 $ disp b]
+
+  disp (a@(Abs x f)) =
+    let vars = map disp $ viewFVars a
+        b = viewFBody a in
+    sep [text "\\\\" <+> sep vars <+> text ".", nest 2 $ disp b]
 
 
   disp (a@(Imply t1 t2)) =
@@ -101,6 +113,7 @@ instance Disp Exp where
   precedence (Star) = 12
   precedence (Const _) = 12
   precedence (App _ _) = 10
+  precedence (TApp _ _) = 10
   precedence _ = 0
 
 

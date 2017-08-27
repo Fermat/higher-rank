@@ -140,6 +140,8 @@ getName _ = error "from getName"
 
 -- Postion encoding scheme:
 -- App 0 1
+-- TApp 0 1
+-- Abs 0 1
 -- Lambda 0 1
 -- Case 0 1 [(0, 0, 1), (1, 0, 1),... (n, 0, 1)]
 -- Let 0 [(0, 0, 1), (1, 0, 1)..(n, 0, 1)] 1
@@ -150,12 +152,20 @@ replace (App t1 t2) (x:xs) r
   | x ==1 = App t1 (replace t2 xs r)
   | x ==0 = App (replace t1 xs r) t2
 
+replace (TApp t1 t2) (x:xs) r
+  | x ==1 = TApp t1 (replace t2 xs r)
+  | x ==0 = TApp (replace t1 xs r) t2
+
 replace (Lambda t t2) (x:xs) r
   | x == 1 = Lambda t (replace t2 xs r)
   | x == 0 =
       case t of
         Ann e ty -> Lambda (Ann (replace e xs r) ty) t2
         _ -> Lambda (replace t xs r) t2
+
+replace (Abs y t2) (x:xs) r
+  | x == 1 = Abs y (replace t2 xs r)
+  | x == 0 = error "internal error from replace"
 
 replace (Case e alts) (x:xs) r
   | x == 0 =
@@ -305,7 +315,7 @@ transit (Res pf
       absVars = zip absNames' [getValue lvars ..]
       sub = zip vars absNames'
       imp' = apply (Subst sub) imp
-      newAbs = foldr (\ a b -> Lambda (Var a) b) imp' absNames
+      newAbs = foldr (\ a b -> Abs a b) imp' absNames
       pf' = replace pf pos newAbs
       pos' = pos ++ take lv stream1
   in [(Res pf'
@@ -459,7 +469,7 @@ transit (Res pf
               absVars = zip absNames' [getValue lvars ..]
               sub = zip vars absNames'
               imp' = apply (Subst sub) imp
-              newAbs = foldr (\ a b -> Lambda (Var a) b) imp' absNames
+              newAbs = foldr (\ a b -> Abs a b) imp' absNames
               pf1 = replace pf pos newAbs
               pos' = pos ++ take lv stream1
               i1 = i+lv
@@ -490,7 +500,7 @@ transit (Res pf
                                       let s = case lookup r sub' of
                                                 Nothing -> (Var r)
                                                 Just t -> t])
-                         contm = foldl' (\ z x -> App z x) exp np     
+                         contm = foldl' (\ z x -> TApp z x) exp np     
                          pf'' = replace pf' pos1 contm
                          n = getValue lvars1
                          freshlvars = map (\ x -> (x, n)) fresh'
@@ -586,7 +596,7 @@ transit (Res pf
                           name = if isUpper $ Data.List.head v
                                  then Const v else Var v
                           contm = foldl' (\ z x -> App z x)
-                                  (foldl' (\ z x -> App z x) name np)
+                                  (foldl' (\ z x -> TApp z x) name np)
                                   body1
                           pf' = normalize $ apply (Subst sub) pf
                           pf'' = replace pf' pos contm

@@ -17,9 +17,11 @@ data Exp = Var Name
          | Star
          | Const Name
          | App Exp Exp
+         | TApp Exp Exp
          | Lambda Exp Exp
          | Imply Exp Exp
          | Forall Name Exp
+         | Abs Name Exp
          | Case Exp [(Exp, Exp)]
          | Let [(Exp, Exp)] Exp
          | Ann Exp Exp
@@ -75,8 +77,10 @@ apply (Subst s) (Var x) =
     
 apply s a@(Const _) = a
 apply s (App f1 f2) = App (apply s f1) (apply s f2)
+apply s (TApp f1 f2) = TApp (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply s f2)
+apply s (Abs x f2) = Abs x (apply s f2)
 apply s (Lambda (Ann (Var x) t) f2) =
   Lambda (Ann (Var x) (apply s t)) (apply s f2)
 apply s (Lambda x f2) = Lambda x (apply s f2)
@@ -107,6 +111,8 @@ norm (Var a) = Var a
 norm (Const a) = Const a
 norm (Ann a t) = Ann (norm a) (norm t)
 norm (Lambda x t) = Lambda x (norm t)
+norm (Abs x t) = Abs x (norm t)
+norm (TApp t1 t2) = TApp (norm t1) (norm t2)
 norm (App (Lambda (Var x) t') t) = apply (Subst [(x, t)]) t'
 norm (App (Var x) t) = App (Var x) (norm t)
 norm (App (Const x) t) = App (Const x) (norm t)
