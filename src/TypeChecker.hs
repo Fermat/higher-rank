@@ -158,7 +158,10 @@ replace (Lambda t t2) (x:xs) r
         _ -> Lambda (replace t xs r) t2
 
 replace (Case e alts) (x:xs) r
-  | x == 0 = Case (replace e xs r) alts
+  | x == 0 =
+    case e of
+      Ann e' ty -> Case (Ann (replace e xs r) ty) alts
+      _ -> Case (replace e xs r) alts
   | x == 1 =
       case xs of
         [] -> error "internal: wrong position for case"
@@ -374,7 +377,7 @@ transit (Res pf
                  (zip posRight (zip brExps thetas))
       altsEnv =  leftEnv ++ rightEnv
       newEnv = (Phi (pos++[0]) (Just (Var y)) (Just e) gamma lvars'):altsEnv
-      newCase = Case (Var y) $ replicate len ((Var y), goal) 
+      newCase = Case (Ann (Var y) (Var y)) $ replicate len ((Var y), goal) 
       pf' = replace pf pos newCase
   in [(Res pf' (newEnv++phi) Nothing j)]
 

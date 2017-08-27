@@ -105,6 +105,7 @@ normalize t = let t1 = norm t
 norm Star = Star
 norm (Var a) = Var a
 norm (Const a) = Const a
+norm (Ann a t) = Ann (norm a) (norm t)
 norm (Lambda x t) = Lambda x (norm t)
 norm (App (Lambda (Var x) t') t) = apply (Subst [(x, t)]) t'
 norm (App (Var x) t) = App (Var x) (norm t)
