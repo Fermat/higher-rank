@@ -58,18 +58,7 @@ data ResState = Res{
   counter :: Int
   } deriving (Show)
 
-getHB ::  Exp -> ([Exp],Exp)
-getHB (Imply x y) = let (bs, t') = getHB y in (x:bs, t')
-getHB t = ([], t)
 
-getVars :: Exp -> ([Name],Exp)
-getVars (Forall x t) = let (xs, t') = getVars t in (x:xs, t')
-getVars t = ([], t)
-
-separate f =
-  let (vars, imp) = getVars f
-      (bs, h) = getHB imp
-  in (vars, h, bs)
                 
 reImp :: [Exp] -> Exp -> Exp
 reImp [] h = h

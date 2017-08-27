@@ -56,10 +56,27 @@ eigen (Imply b h) = eigen b `S.union` eigen h
 eigen (Lambda p f) = eigen f 
 
 
--- flatten of type expression
+
 flatten :: Exp -> [Exp]
 flatten (App f1 f2) = flatten f1 ++ [f2]
 flatten a = [a]
+
+flattenT :: Exp -> [Exp]
+flattenT (TApp f1 f2) = flatten f1 ++ [f2]
+flattenT a = [a]
+
+getHB ::  Exp -> ([Exp],Exp)
+getHB (Imply x y) = let (bs, t') = getHB y in (x:bs, t')
+getHB t = ([], t)
+
+getVars :: Exp -> ([Name],Exp)
+getVars (Forall x t) = let (xs, t') = getVars t in (x:xs, t')
+getVars t = ([], t)
+
+separate f =
+  let (vars, imp) = getVars f
+      (bs, h) = getHB imp
+  in (vars, h, bs)
 
 
 newtype Subst = Subst [(String, Exp)] deriving (Show, Eq)
