@@ -4,6 +4,13 @@ data List :: * -> * where
  Nil :: forall a . List a 
  Cons :: forall a . a -> List a -> List a
 
+data Pair :: * -> * -> * where
+  Pair :: forall a b . a -> b -> Pair a b
+
+idP :: forall a b . Pair a b -> Pair a b
+idP x = let (Pair y1 y2) = x
+        in (Pair y1 y2)
+	
 map :: forall a b . (a -> b) -> List a -> List b
 map f Nil = Nil
 map f (Cons x xs) = Cons (f x) (map f xs)
@@ -27,4 +34,7 @@ skk x = let s :: forall a b c . (a -> b -> c) -> (a -> b) -> (a -> c)
         in s k k x
 
 id :: forall a . (a -> a)
-id = let id' = \ x -> x in id' 
+id = let id' = \ x -> x in id'
+
+u :: forall a . (a -> a)
+u = u
