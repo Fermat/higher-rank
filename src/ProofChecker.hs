@@ -121,16 +121,45 @@ proofCheck (Case (Ann e t) alts) =
                   t1 <- checkBranch b1 t
                   if t' `alphaEq` t1 then return t'
                     else lift $ lift $ Left $
-                         (text "proof checking error for the branch"
+                         (text "proof checking error at the branch"
                           <+> disp (fst b1) <+> text "->") $$
                          (nest 2 $ text "expected type:" <+> disp t') $$
                          (nest 2 $ text "actual type:" <+> disp t1)
 
--- proofCheck (Let defs e) =
---   do newEnv <- checkAllPats defs
---      checkDefs newEnv defs
---      local (\ y -> newEnv ++ y) (proofCheck e)
-                    
+proofCheck (Let defs e) =
+  do newEnv <- checkAllPats $ map fst defs
+     checkDefs newEnv defs
+     local (\ y -> newEnv ++ y) (proofCheck e)
+  where checkAllPats ((Ann p@(App _ _) t):ds) =
+          do penv <- checkPattern p t
+             env <- checkAllPats ds
+             return $ penv ++ env
+             
+        checkAllPats ((Ann x t):ds) | (isVar $ erase x)  =
+          do t' <- proofCheck x
+             if t' `alphaEq` t then
+               do env <- checkAllPats ds
+                  return $ (getName $ erase x, t):env
+               else lift $ lift $ Left $
+                    (text "proof checking error at the let-branch"
+                     <+> disp x) $$
+                    (nest 2 $ text "expected type:" <+> disp t) $$
+                    (nest 2 $ text "actual type:" <+> disp t')
+        checkAllPats [] = return []
+
+        checkDefs env ((Ann _ t, e):ds) =
+             do t' <- proofCheck e
+                if t' `alphaEq` t then
+                   checkDefs env ds
+                  else lift $ lift $ Left $
+                       (text "proof checking error at the let-branch"
+                         <+> disp e) $$
+                       (nest 2 $ text "expected type:" <+> disp t) $$
+                       (nest 2 $ text "actual type:" <+> disp t')
+        checkDefs env [] = return ()
+                         
+
+       
 checkPattern :: Exp -> Exp -> PCMonad [(Name, Exp)]
 checkPattern (Var x) t = return [(x, t)]
 checkPattern p t =

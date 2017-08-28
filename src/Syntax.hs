@@ -78,6 +78,22 @@ separate f =
       (bs, h) = getHB imp
   in (vars, h, bs)
 
+isAtom (Const x) = True
+isAtom (Var _) = True
+isAtom _ = False
+
+isVar (Var _) = True
+isVar _ = False
+
+erase (Const x) = Const x
+erase (Var x) = Var x
+erase (Abs x e) = erase e
+erase (TApp e t) = erase e
+erase (App a1 a2) = App (erase a1) (erase a2)
+
+getName (Const x) = x
+getName (Var x) = x
+getName _ = error "from getName"
 
 newtype Subst = Subst [(String, Exp)] deriving (Show, Eq)
 

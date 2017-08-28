@@ -83,7 +83,7 @@ makePatEnv (x:xs) i =
   let (env, j) = patternVars x i
       (res, n) = makePatEnv xs j
   in (env:res, n)
-    
+
 
 makeLvars ((env, Var y, Var x, e):xs) n = (Var y, n):makeLvars xs n
 makeLvars ((env, Var y, p, e):xs) n =
@@ -116,16 +116,7 @@ withVars ((Nothing, p, e):xs) i =
   in ((Var $ "y"++show i++"'", p, e):ps, j)
 withVars [] i = ([], i)
 
-isAtom (Const x) = True
-isAtom (Var _) = True
-isAtom _ = False
 
-isVar (Var _) = True
-isVar _ = False
-
-getName (Const x) = x
-getName (Var x) = x
-getName _ = error "from getName"
 
 -- Postion encoding scheme:
 -- App 0 1
