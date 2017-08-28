@@ -99,9 +99,35 @@ proofCheck (Abs x t) =
 proofCheck (Lambda (Ann p t1) t) =
   do newEnv <- checkPattern p t1
      t' <- local (\ y -> newEnv ++ y) (proofCheck t)
+     ks <- lift ask
+     kindable (Imply t1 t') ks
      return $ Imply t1 t'
 
+proofCheck (Case (Ann e t) alts) =
+  do t' <- proofCheck e
+     if t' == t then
+       checkBranches alts t
+       else lift $ lift $ Left $
+            (text "proof checking error for"
+              <+> disp e) $$ (nest 2 $ text "expected type:" <+> disp t) $$
+            (nest 2 $ text "actual type:" <+> disp t')
 
+       where checkBranch (p1, e1) t =
+               do newEnv <- checkPattern p1 t
+                  local (\ y -> newEnv ++ y) (proofCheck e1)
+             checkBranches (b:[]) t = checkBranch b t
+             checkBranches (b1:bs) t =
+               do t' <- checkBranches bs t
+                  t1 <- checkBranch b1 t
+                  if t' `alphaEq` t1 then return t'
+                    else lift $ lift $ Left $
+                         (text "proof checking error for the branch"
+                          <+> disp (fst b1) <+> text "->") $$
+                         (nest 2 $ text "expected type:" <+> disp t') $$
+                         (nest 2 $ text "actual type:" <+> disp t1)
+
+-- proofCheck (Let )
+                    
 checkPattern :: Exp -> Exp -> PCMonad [(Name, Exp)]
 checkPattern (Var x) t = return [(x, t)]
 checkPattern p t =

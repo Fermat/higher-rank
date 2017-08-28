@@ -12,3 +12,13 @@ map' :: forall a b . (a -> b) -> List a -> List b
 map' f l = case l of
   	   	Nil -> Nil
         	Cons x xs -> Cons (f x) (map' f xs)
+
+skk :: forall a . (a -> a)
+skk x = let s :: forall a b c . (a -> b -> c) -> (a -> b) -> (a -> c)
+            s = \ x y z -> x z (y z)
+            k :: forall a b . a -> b -> a
+            k = \ x y -> x
+        in s k k x
+
+id :: forall a . (a -> a)
+id = let id' = \ x -> x in id' 

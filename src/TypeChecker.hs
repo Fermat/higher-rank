@@ -170,10 +170,11 @@ replace (Let defs e) (x : xs) r
   | x == 1 = Let defs (replace e xs r)
   | x == 0 =
     case xs of
-      [] -> error "internal: wrong position for case"
+      [] -> error "internal: wrong position for let"
       y:y':ys -> Let (replaceL y y' ys defs r) e
 
 replaceL y y' ys [] r = error "internal: wrong position for case/let branch"
+replaceL 0 0 ys ((Ann p t,e):alts) r = (Ann (replace p ys r) t, e):alts
 replaceL 0 0 ys ((p,e):alts) r = ((replace p ys r), e):alts
 replaceL 0 1 ys ((p,e):alts) r = (p, (replace e ys r)):alts
 replaceL y y' ys (a:alts) r | y > 0 = a : replaceL (y-1) y' ys alts r
@@ -401,9 +402,9 @@ transit (Res pf
                  (zip posRight tps)
       defsEnv = leftEnv ++ rightEnv
       thetas = concat $ map (\ (a,b,c,d) -> a) tps
-      newEnv = defsEnv ++
-               [(Phi (pos++[1]) (Just goal) (Just e) (thetas ++gamma) lvars')]
-      newLet = Let (map (\ (a,b,c,d) -> (b, b)) tps) goal 
+      newEnv = 
+        [(Phi (pos++[1]) (Just goal) (Just e) (thetas ++gamma) lvars')] ++ defsEnv
+      newLet = Let (map (\ (a,b,c,d) -> ((Ann b b), b)) tps) goal 
       pf' = replace pf pos newLet
   in [(Res pf' (newEnv++phi) Nothing j')]
       
