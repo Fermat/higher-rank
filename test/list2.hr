@@ -1,0 +1,14 @@
+module List where
+
+data List :: * -> * where
+ Nil :: forall a . List a 
+ Cons :: forall a . a -> List a -> List a
+
+map :: forall a b . (a -> b) -> List a -> List b
+map f Nil = Nil
+map f (Cons x xs) = Cons (f x) (map f xs)
+
+map' :: forall a b . (a -> b) -> List a -> List b
+map' f l = case l of
+  	   	Nil -> Nil
+        	Cons x xs -> Cons (f x) (map' f xs)
