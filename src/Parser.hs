@@ -74,7 +74,7 @@ funDecl = do
   return $ FunDecl v t ls
     where eq = do
             var
-            ps <- many pat
+            ps <- many $ try con <|> try var <|> parens patComp
             reservedOp "="
             p <- term
             return (ps, p)
@@ -129,7 +129,7 @@ term = try lambda <|> try compound <|> try caseExp <|> try letExp <|> parens ter
 
 lambda = do
   reservedOp "\\"
-  as <- many1 pat
+  as <- many1 $ try con <|> try var <|> parens patComp
   reservedOp "->"
   p <- term
   return $ foldr (\ x y -> Lambda x y) p as -- (map (\(Var x) -> x) as)
@@ -147,10 +147,11 @@ caseExp = do
   e <- term
   reserved "of"
   indented
-  alts <- block $ do{n <- con; as <- many pat; reserved "->"; a' <- term;
-                     let a = foldl' (\ z x -> App z x) n as in 
-                       return (a, a')}
+  alts <- block $ do{p <- pat; reserved "->"; a' <- term;
+                     -- let a = foldl' (\ z x -> App z x) n as in 
+                     return (p, a')} -- n <- con; as <- many pat
   return $ Case e alts
+
 
 letExp = do
   reserved "let"
@@ -173,8 +174,8 @@ letExp = do
           return (Ann n t, e)
           
           
-
-pat = try var <|> try con <|> parens patComp
+-- try con
+pat = try var <|> parens patComp <|> patComp
   -- as <- patArgs
   -- if null as then return n
   --   else return $ foldl' (\ z x -> App z x) n as 

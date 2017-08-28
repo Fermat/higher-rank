@@ -7,11 +7,17 @@ data List :: * -> * where
 map :: forall a b . (a -> b) -> List a -> List b
 map f Nil = Nil
 map f (Cons x xs) = Cons (f x) (map f xs)
+map f x = Nil
 
 map' :: forall a b . (a -> b) -> List a -> List b
 map' f l = case l of
   	   	Nil -> Nil
         	Cons x xs -> Cons (f x) (map' f xs)
+		x -> Nil
+
+app :: forall a . List a -> List a -> List a
+app Nil x = x
+app (Cons x xs) l = Cons x (app xs l)
 
 skk :: forall a . (a -> a)
 skk x = let s :: forall a b c . (a -> b -> c) -> (a -> b) -> (a -> c)

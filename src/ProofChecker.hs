@@ -126,7 +126,10 @@ proofCheck (Case (Ann e t) alts) =
                          (nest 2 $ text "expected type:" <+> disp t') $$
                          (nest 2 $ text "actual type:" <+> disp t1)
 
--- proofCheck (Let )
+-- proofCheck (Let defs e) =
+--   do newEnv <- checkAllPats defs
+--      checkDefs newEnv defs
+--      local (\ y -> newEnv ++ y) (proofCheck e)
                     
 checkPattern :: Exp -> Exp -> PCMonad [(Name, Exp)]
 checkPattern (Var x) t = return [(x, t)]
