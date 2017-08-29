@@ -23,18 +23,43 @@ makeTyEnv ((Prim (Var f) t):xs) = (f, t):makeTyEnv xs
 
 makeLam pats e = foldr (\ p e' -> Lambda p e') e pats
 
+
+process fv (Var x) =
+  if x `elem` fv then
+    (Const "Void")
+  else (Var x)
+process fv (Const x) =
+  if isUpper $ head x then Const x
+  else (Var x)
+process fv (App e1 e2) = App (process fv e1) (process fv e2)
+process fv (TApp e1 e2) = TApp (process fv e1) (process fv e2)
+process fv (Imply e1 e2) = Imply (process fv e1) (process fv e2)
+process fv (Lambda (Ann p t) e2) =
+  Lambda (Ann (process fv p) (process fv t)) (process fv e2)
+process fv (Lambda (Var x) e2) =
+  Lambda (Var x) (process fv e2)
+process fv (Abs x e2) = Abs x (process fv e2)
+process fv (Forall x e2) = Forall x (process fv e2)
+process fv (Ann e t) = Ann (process fv e) (process fv t)
+process fv (Case e alts) = Case (process fv e) alts'
+  where alts' = map (\(p, exp) -> (process fv p, process fv exp)) alts
+process fv (Let alts e) = Let alts' (process fv e)
+  where alts' = map (\(p, exp) -> (process fv p, process fv exp)) alts
+process fv e = error $ "from process " ++ show e 
+
+
 checkDecls :: [Decl] -> Either Doc [(Exp, Exp, Exp)]  
 checkDecls a =
   let tyEnv = makeTyEnv a
       funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d, f)) defs |
                           (FunDecl (Var f) t defs) <- a]
   in mapM (\ (t, e, f) ->
-              do{e' <- typeCheck tyEnv (t, e);
-                 return (Var f, t, e')
+              do{(e', vars) <- typeCheck tyEnv (t, e);
+                 return (Var f, t, process vars e')
                 })
      funcDefs
 
-typeCheck :: TyEnv -> (Exp, Exp) -> Either Doc Exp 
+typeCheck :: TyEnv -> (Exp, Exp) -> Either Doc (Exp, [Name])
 typeCheck env (goal, e) =
   let phi = Phi [] (Just goal) (Just e) env []
       init = Res goal [phi] Nothing 0
@@ -617,7 +642,7 @@ transit (Res pf
 
 transit e = [e]
           
-ersm :: [ResState] -> Either Doc Exp
+ersm :: [ResState] -> Either Doc (Exp, [Name])
 ersm init = let s = concat $ map transit init
                 (fails, pending) = partition failure s
                 flag = length fails == length s
@@ -628,10 +653,14 @@ ersm init = let s = concat $ map transit init
                else case [p | p <- pending, success p ] of
                       [] -> ersm s
                       -- a -> Right $ map mixedTerm a
-                      (Res pf _ _ _):_ -> Right pf
+                      (Res pf phi _ _):_ -> Right (pf, genVars phi)
                              
   where failure (Res _ _ (Just _) _) = True
         failure _ = False
         success (Res pf phi Nothing i) =
           and $ map (\p -> currentGoal p == Nothing && currentProg p == Nothing) phi 
         success _ = False
+        genVars phi = concat $ map (\(Phi _ _ _ _ lvars) -> genVars' lvars) phi
+        genVars' ((Var x, n):xs) = x : genVars' xs
+        genVars' (x:xs) = genVars' xs
+        genVars' [] = []

@@ -27,9 +27,10 @@ main = flip catches handlers $ do
                            case res of
                              Left e -> throw e
                              Right pfs ->
-                               do print $ text "Type checking success, the following are the annotatated program: \n"
+                               do print $
+                                    text
+                                    "Type checking success, the following are the annotatated program: \n"
                                   print $ text "-----------------------------------------\n"
-                             
                                   print $ printTyped pfs
 
 

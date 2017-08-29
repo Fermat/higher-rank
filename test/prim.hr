@@ -6,8 +6,8 @@ primitive l'' :: (forall x . F x) -> forall x . F x
 
 primitive what :: (forall x . F x) -> Void
 
-primitive fix :: forall a . (a -> a) -> a
--- fix f = f (fix f)
+fix :: forall a . (a -> a) -> a
+fix f = f (fix f)
 
 l' :: Void
 l' = what (fix l'')
