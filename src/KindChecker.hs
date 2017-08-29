@@ -40,7 +40,8 @@ inferKind (Const x) =
 
 inferKind (Var x) = 
   do env <- lift get
-     case lookup x env of
+     env' <- ask
+     case lookup x (env++env') of
        Nothing -> throwError $
                   text "Kinding error: " <+>
                   text "unbound type variable:" <+> disp x
@@ -85,6 +86,10 @@ inferKind (Imply f1 f2) =
 runKinding :: Exp -> KindDef -> Either Doc Exp
 runKinding t g = do (k, sub) <- runReaderT (runStateT (evalStateT (inferKind t) 0) []) g 
                     return k
+
+runKinding' :: Exp -> KindDef -> Either Doc (Exp, [(Name, Exp)])
+runKinding' t g = runReaderT (runStateT (evalStateT (inferKind t) 0) []) g 
+                    
 
 
 instance Exception Doc 
