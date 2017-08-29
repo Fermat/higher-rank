@@ -2,8 +2,9 @@
 module Main where
 import Parser(parseModule)
 import Pretty(printTyped, disp)
-import KindChecker(kinding)
-import TypeChecker(checkDecls)
+import KindChecker(kinding, getKindDef)
+import TypeChecker(checkDecls, makeTyEnv)
+import ProofChecker(proofChecks)
 
 
 import Text.PrettyPrint
@@ -24,14 +25,19 @@ main = flip catches handlers $ do
                            print $ disp a
                            kinding a 
                            let res = checkDecls a
+                               ks = getKindDef a
+                               tyenv = makeTyEnv a  
                            case res of
                              Left e -> throw e
                              Right pfs ->
-                               do print $
-                                    text
-                                    "Type checking success, the following are the annotatated program: \n"
-                                  print $ text "-----------------------------------------\n"
-                                  print $ printTyped pfs
+                               case proofChecks ks tyenv pfs of
+                                 Left e -> throw e
+                                 Right _ ->
+                                   do print $
+                                        text "Type checking and proof checking success, the following are the annotatated program: \n"
+                                   
+                                      print $ text "-----------------------------------------\n"
+                                      print $ printTyped pfs
 
 
 

@@ -30,9 +30,13 @@ inferKind (Const x) =
   do genv <- ask
      case lookup x genv of
        Just k -> return k
-       Nothing -> throwError $
-                  text "Kinding error: " <+>
-                  text "undefined type constructor:" <+> disp x
+       Nothing ->
+         -- Build-in type Void inhabited by nothing
+         if x == "Void" then return Star
+         else 
+           throwError $
+           text "Kinding error: " <+>
+           text "undefined type constructor:" <+> disp x
 
 inferKind (Var x) = 
   do env <- lift get

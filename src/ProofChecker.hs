@@ -7,36 +7,52 @@ import KindChecker
 
 import Text.PrettyPrint
 import Control.Monad.Reader
-
-type KSubst = [(Name, Exp)]
-type PCMonad a = (ReaderT [(Name, Exp)] (ReaderT KSubst (Either Doc))) a
+import Control.Monad.State.Lazy
+import Debug.Trace
+-- type KSubst = [(Name, Exp)]
+type PCMonad a = (ReaderT [(Name, Exp)] (ReaderT KindDef (Either Doc))) a
 
 isFree :: Name -> [(Name, Exp)] -> Bool
 isFree x m =
   let a = map (\ (y, t) ->  x `elem` (freeVars t)) m 
   in or a
 
-kindable :: Exp -> KSubst -> PCMonad ()
+kindable :: Exp -> KindDef -> PCMonad ()
 kindable t ks =
   case runKinding t ks of
-    Left err -> lift $ lift $ Left $ text "ill-kinded type: " <+> disp t
+    Left err -> lift $ lift $ Left $ text "ill-kinded type: " <+> disp t $$
+                nest 2 (text "current kind environment:" $$ nest 2 (disp ks))
     Right Star -> return ()
     Right e -> 
       lift $ lift $ Left ((text "ill-kinded type " <+> disp t) $$
                           nest 2 (text "expected: *" <+>
                                    text "actual kind:" <+> disp e)) 
 
+proofChecks ks tyenv l = mapM (\ ((Var n), f, t) -> runProofCheck n t f ks tyenv) l
+runProofCheck :: Name -> Exp -> Exp -> KindDef -> [(Name, Exp)] -> Either Doc ()
+runProofCheck n t f ks ev = 
+  case runReaderT (runReaderT (proofCheck t) ev) ks of
+    Left err -> Left err
+    Right f' ->
+      if f' `alphaEq` f then return ()
+      else Left $
+           sep [text "proof checking error", text "expected type:" <+> disp f,
+                 text "actual type:", disp f']
+           
 proofCheck :: Exp -> PCMonad Exp
+--proofCheck state | trace ("proofCheck " ++show (state) ++"\n") False = undefined
 proofCheck (Var x) =
   do env <- ask
+     ks <- lift ask
      case lookup x env of
        Nothing -> lift $ lift $ Left 
                   $ text "proof checking error: undefined variable" 
-                  <+> text x
-       Just f -> 
-         do ks <- lift ask 
-            kindable f ks
-            return f
+                  <+> text x $$ nest 2 (text "current type environment:" $$ nest 2 (disp env))
+                  $$ nest 2 (text "current kind environment:" $$ nest 2 (disp ks))
+       Just f -> return f
+         -- do ks <- lift ask 
+         --    kindable f ks
+         --    return f
 
 proofCheck (Const x) =
   do env <- ask
@@ -48,21 +64,21 @@ proofCheck (Const x) =
 
 proofCheck (TApp e1 e2)  =
   do f1 <- proofCheck e1
-     ks <- lift ask
-     k <- lift $ lift $ runKinding e2 ks
-     case k of
-       Star -> 
-         case f1 of
+--     ks <- lift ask
+--     k <- lift $ lift $ runKinding e2 ks
+     -- case k of
+     --   Star -> 
+     case f1 of
            Forall x a2 -> 
              do let res = normalize $ apply (Subst [(x, e2)]) a2
-                kindable res ks   
+--                kindable res ks   
                 return res    
            b -> lift $ lift $ Left $
                 (text "proof checking error on"
                   <+> disp e1) $$ (nest 2 $ text "unexpected type:" <+> disp b)
-       _ ->  lift $ lift $ Left $
-             (text "kinding checking error on"
-               <+> disp e2) $$ (nest 2 $ text "unexpected kind:" <+> disp k)         
+       -- _ ->  lift $ lift $ lift $ Left $
+       --       (text "kinding checking error on"
+       --         <+> disp e2) $$ (nest 2 $ text "unexpected kind:" <+> disp k)         
             
 proofCheck (App e1 e2) =
   do f1 <- proofCheck e1 
@@ -81,8 +97,8 @@ proofCheck (App e1 e2) =
                $$ (nest 2 $ disp f2))
 
 proofCheck (Abs x t) = 
-  do f <- proofCheck t
-     e <- ask
+  do f <- (proofCheck t)
+     e <- lift ask
      if isFree x e
        then lift $ lift $ Left $
             sep [text "proof checking error",
@@ -92,15 +108,15 @@ proofCheck (Abs x t) =
                   nest 2 $ disp (Abs x t),
                   text "current assumption", nest 2 $ disp e ]
        else 
-       do ks <- lift ask
-          kindable (Forall x f) ks   
+       -- do ks <- lift $ lift ask
+       --    kindable (Forall x f) ks   
           return $ (Forall x f)
 
 proofCheck (Lambda (Ann p t1) t) =
   do newEnv <- checkPattern p t1
      t' <- local (\ y -> newEnv ++ y) (proofCheck t)
-     ks <- lift ask
-     kindable (Imply t1 t') ks
+--     ks <- lift ask
+--     kindable (Imply t1 t') ks
      return $ Imply t1 t'
 
 proofCheck (Case (Ann e t) alts) =
@@ -130,17 +146,18 @@ proofCheck (Let defs e) =
   do newEnv <- checkAllPats $ map fst defs
      checkDefs newEnv defs
      local (\ y -> newEnv ++ y) (proofCheck e)
-  where checkAllPats ((Ann p@(App _ _) t):ds) =
+  where -- checkAllPats state | trace ("checkallpats " ++show (state) ++"\n") False = undefined
+        checkAllPats ((Ann p@(App _ _) t):ds) =
           do penv <- checkPattern p t
              env <- checkAllPats ds
              return $ penv ++ env
              
-        checkAllPats ((Ann x t):ds) | (isVar $ erase x)  =
-          do t' <- proofCheck x
+        checkAllPats ((Ann x t):ds) | (isVar $ erase x) = 
+          do t' <- local (\ y -> (getName $ erase x, t):y) (proofCheck x)
              if t' `alphaEq` t then
                do env <- checkAllPats ds
                   return $ (getName $ erase x, t):env
-               else lift $ lift $ Left $
+               else  lift $ lift $ Left $
                     (text "proof checking error at the let-branch"
                      <+> disp x) $$
                     (nest 2 $ text "expected type:" <+> disp t) $$
@@ -195,4 +212,4 @@ checkPattern p t =
                        nest 2 (text "it is applied to types:" <+> vcat (map disp ts)) $$
                        nest 2 (text "then is applied to patterns:" <+> vcat (map disp ps))
 
-       _ -> error "internal error from checkPattern" 
+       c' -> error $ "internal error from checkPattern " ++ show c'

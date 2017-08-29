@@ -62,7 +62,7 @@ flatten (App f1 f2) = flatten f1 ++ [f2]
 flatten a = [a]
 
 flattenT :: Exp -> [Exp]
-flattenT (TApp f1 f2) = flatten f1 ++ [f2]
+flattenT (TApp f1 f2) = flattenT f1 ++ [f2]
 flattenT a = [a]
 
 getHB ::  Exp -> ([Exp],Exp)
