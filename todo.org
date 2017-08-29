@@ -1,6 +1,6 @@
 * Todo list
 ** DONE Simplify error messaging and the transit function 
-** TODO Support proof checking
+** DONE Support proof checking
 ** TODO Support type synonyms
 ** TODO Support infix notations, make Bird's program more readable.
 
