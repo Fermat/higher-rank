@@ -1,13 +1,37 @@
 module church where
 
-zero :: forall x . (x -> x) -> x -> x
+type Nat = forall x . (x -> x) -> x -> x
+
+zero :: Nat
 zero = \ s z -> z
 
-succ :: (forall x . (x -> x) -> x -> x) -> (forall x . (x -> x) -> x -> x)
+succ :: Nat -> Nat
 succ n = \ s z -> s (n s z)
 
-add :: (forall x . (x -> x) -> x -> x) -> (forall x . (x -> x) -> x -> x) -> (forall x . (x -> x) -> x -> x)
+one :: Nat
+one = \ s z -> s z
+
+add :: Nat -> Nat -> Nat
 add n m = n succ m
 
-add' :: (forall x . (x -> x) -> x -> x) -> (forall x . (x -> x) -> x -> x) -> (forall x . (x -> x) -> x -> x)
-add' n m = \ s z -> m s (n s z)
+mult :: Nat -> Nat -> Nat
+mult = \ n m -> n (add m) zero
+
+exp :: Nat -> Nat -> Nat
+exp = \ n m -> n (mult m) one
+
+add' :: Nat -> Nat -> Nat
+add' n m = \ s z -> n s (m s z)
+
+
+mult' :: Nat -> Nat -> Nat
+mult' n m = \ s z -> n (m s) z
+
+exp' :: Nat -> Nat -> Nat
+exp' n m = \ s z ->  (m n) s z
+-- note that exp' n m = m n will not type check because application does not generalize variables
+
+type Pair a b = forall x . (a -> b -> x) -> x
+
+pair :: forall a b . a -> b -> Pair a b
+pair x y = \ f -> f x y
