@@ -187,7 +187,7 @@ proofCheck (Let defs e) =
                        (nest 2 $ text "actual type:" <+> disp t')
         checkDefs env [] = return ()
                          
-
+proofCheck e = error $ "from proofCheck " ++ show e
        
 checkPattern :: Exp -> Exp -> PCMonad [(Name, Exp)]
 checkPattern (Var x) t = return [(x, t)]

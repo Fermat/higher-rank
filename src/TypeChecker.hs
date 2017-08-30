@@ -191,7 +191,7 @@ replace (Abs y t2) (x:xs) r
 replace (Case e alts) (x:xs) r
   | x == 0 =
     case e of
-      Ann e' ty -> Case (Ann (replace e xs r) ty) alts
+      Ann e' ty -> Case (Ann (replace e' xs r) ty) alts
       _ -> Case (replace e xs r) alts
   | x == 1 =
       case xs of
@@ -205,6 +205,9 @@ replace (Let defs e) (x : xs) r
       [] -> error "internal: wrong position for let"
       y:y':ys -> Let (replaceL y y' ys defs r) e
 
+-- replace (Ann e t) pos r = Ann (replace e pos r) t
+
+replace a b r = error $ "from replace " ++ show a
 replaceL y y' ys [] r = error "internal: wrong position for case/let branch"
 replaceL 0 0 ys ((Ann p t,e):alts) r = (Ann (replace p ys r) t, e):alts
 replaceL 0 0 ys ((p,e):alts) r = ((replace p ys r), e):alts
