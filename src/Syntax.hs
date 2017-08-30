@@ -2,7 +2,7 @@ module Syntax where
 
 
 import Control.Monad.Reader
-
+import Control.Monad.State.Lazy
 import Data.Char
 import qualified Data.Set as S
 import Data.List hiding (partition)
@@ -107,16 +107,18 @@ apply :: Subst -> Exp -> Exp
 apply (Subst s) (Var x) =
   case lookup x s of
     Nothing -> Var x
-    Just t -> t
+    Just t -> t  
     
 apply s a@(Const _) = a
 apply s (App f1 f2) = App (apply s f1) (apply s f2)
 apply s (TApp f1 f2) = TApp (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
-apply s (Forall x f2) = Forall x (apply s f2)
-apply s (Abs x f2) = Abs x (apply s f2)
+apply s (Forall x f2) = Forall x (apply (minus s [x]) f2)
+apply s (Abs x f2) = Abs x (apply (minus s [x]) f2)
 apply s (Lambda (Ann (Var x) t) f2) =
-  Lambda (Ann (Var x) (apply s t)) (apply s f2)
+  Lambda (Ann (Var x) (apply (minus s [x]) t)) (apply (minus s [x]) f2)
+apply s (Lambda (Var x) f2) =
+  Lambda (Var x) (apply (minus s [x]) f2)
 apply s (Lambda x f2) = Lambda x (apply s f2)
 apply s Star = Star
 apply s (Case e cons) = Case (apply s e) cons'
@@ -126,7 +128,7 @@ apply s (Let defs e) = Let def' (apply s e)
 apply s (Ann x e) = Ann (apply s x) (apply s e)  
 -- apply s e = error $ show e ++ "from apply"
 
-
+minus (Subst sub) fv = Subst $ [ (x, e) | (x, e) <- sub, not $ x `elem` fv]
 extend :: Subst -> Subst -> Subst
 extend (Subst s1) (Subst s2) =
   Subst $ [(x, normalize $ apply (Subst s1) e) | (x, e) <- s2] ++ s1
@@ -162,8 +164,26 @@ norm (Let alts e) = Let alts' (norm e)
   where alts' = map (\(p, exp) -> (norm p, norm exp)) alts
 
 
-normalizeTy t g = normalize $ normTy t g
+normalizeTy t g = normalizeT $ normTy t g
 
+normalizeT :: Exp -> Exp
+normalizeT t = let t1 = normalizeTypeDef t
+                   t2 = normalizeTypeDef t1
+               in if t1 `alphaEq` t2 then t1 else normalizeT t2 
+
+normalizeTypeDef (Var a) = Var a
+normalizeTypeDef (Const a) = Const a
+normalizeTypeDef (Lambda x t) = Lambda x (normalizeTypeDef t)
+normalizeTypeDef (App (Lambda (Var x) t') t) = runSubst t (Var x) t'
+normalizeTypeDef (App (Var x) t) = App (Var x) (normalizeTypeDef t)
+normalizeTypeDef (App (Const x) t) = App (Const x) (normalizeTypeDef t)
+normalizeTypeDef (App t' t) = 
+  case (App (normalizeTypeDef t') (normalizeTypeDef t)) of
+    a@(App (Lambda x t') t) -> normalizeTypeDef a
+    b -> b
+normalizeTypeDef (Imply t t') = Imply (normalizeTypeDef t) (normalizeTypeDef t')
+normalizeTypeDef (Forall x t) = Forall x (normalizeTypeDef t)
+ 
 normTy (Var a) g = Var a
 normTy (Const a) g =
   case lookup (Const a) g of
@@ -174,6 +194,53 @@ normTy (Abs x t) g = Abs x (normTy t g)
 normTy (App t' t) g = (App (normTy t' g) (normTy t g))
 normTy (Imply t t') g = Imply (normTy t g) (normTy t' g)
 normTy (Forall x t) g = Forall x (normTy t g)
+
+type GVar a = State Int a
+runSubst :: Exp -> Exp -> Exp -> Exp
+runSubst t x t1 = fst $ runState (subst t x t1) 0
+  
+subst :: Exp -> Exp -> Exp -> GVar Exp
+subst s (Var x) (Const y) = return $ Const y
+
+subst s (Var x) (Var y) =
+  if x == y then return s else return $ Var y
+                               
+subst s (Var x) (Imply f1 f2) = do
+  c1 <- subst s (Var x) f1
+  c2 <- subst s (Var x) f2
+  return $ Imply c1 c2
+
+subst s (Var x) (App f1 f2) = do
+  c1 <- subst s (Var x) f1
+  c2 <- subst s (Var x) f2
+  return $ App c1 c2
+
+
+subst s (Var x) (Forall a f) =
+  if x == a || not (x `elem` freeVar f) then return $ Forall a f
+  else if not (a `elem` freeVar s)
+       then do
+         c <- subst s (Var x) f
+         return $ Forall a c
+       else do
+         n <- get
+         modify (+1)
+         c1 <- subst (Var (a++ show n++"'")) (Var a) f
+         subst s (Var x) (Forall (a ++ show n) c1)
+
+subst s (Var x) (Lambda (Var a) f) =
+  if x == a || not (x `elem` freeVar f) then return $ Lambda (Var a) f
+  else if not (a `elem` freeVar s)
+       then do
+         c <- subst s (Var x) f
+         return $ Lambda (Var a) c
+       else do
+         n <- get
+         modify (+1)
+         c1 <- subst (Var (a++ show n++ "'")) (Var a) f
+         subst s (Var x) (Lambda (Var $ a ++ show n++"'") c1)         
+
+
 
 data Nameless = V Int
               | C Name
