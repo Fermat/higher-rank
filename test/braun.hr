@@ -27,4 +27,11 @@ merge f (Cons x xs) (Cons y ys) =
   case (f x y) of
     True -> Cons x (merge f xs (Cons y ys))
     False -> Cons y (merge f (Cons x xs) ys)
-    
+
+sortH :: forall a . (a -> a -> Bool) -> Braun a -> List a
+sortH f (Leaf a) = Cons a Nil
+sortH f (Node l r) = merge f (sortH f l) (sortH f r)
+
+mergeSort :: forall a . (a -> a -> Bool) -> List a -> List a
+mergeSort f Nil = Nil
+mergeSort f (Cons a as) = sortH f (toBraun a as)
