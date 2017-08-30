@@ -14,12 +14,26 @@ type Pos = [Int]
 
 -- type environment
 type TyEnv = [(Name, Exp)]
+type TyDef = [(Exp, Exp)]
 
 makeTyEnv :: [Decl] -> TyEnv
-makeTyEnv [] = [] 
-makeTyEnv ((DataDecl _ _ cons):xs) = [(d, e) | (Const d, e) <- cons] ++ makeTyEnv xs
-makeTyEnv ((FunDecl (Var f) t _):xs) = (f, t):makeTyEnv xs
-makeTyEnv ((Prim (Var f) t):xs) = (f, t):makeTyEnv xs
+makeTyEnv a =
+  let (tyenv, def) = makeTyEnv' a in
+    map (\ (x, t) -> (x, normalizeTy t def)) tyenv
+makeTyEnv' :: [Decl] -> (TyEnv, TyDef)
+makeTyEnv' [] = ([], [])
+makeTyEnv' ((DataDecl _ _ cons):xs) =
+  let (tyenv, tydef) = makeTyEnv' xs in
+    ([(d, e) | (Const d, e) <- cons] ++ tyenv, tydef )
+makeTyEnv' ((FunDecl (Var f) t _):xs) =
+  let (tyenv, tydef) = makeTyEnv' xs in 
+    ((f, t):tyenv, tydef)
+makeTyEnv' ((Prim (Var f) t):xs) =
+  let (tyenv, tydef) = makeTyEnv' xs in
+    ((f, t):tyenv, tydef)
+makeTyEnv' ((Syn t k e):xs) =
+  let (tyenv, tydef) = makeTyEnv' xs in
+    (tyenv, (t, e):tydef)
 
 makeLam pats e = foldr (\ p e' -> Lambda p e') e pats
 
@@ -50,12 +64,14 @@ process fv e = error $ "from process " ++ show e
 
 checkDecls :: [Decl] -> Either Doc [(Exp, Exp, Exp)]  
 checkDecls a =
-  let tyEnv = makeTyEnv a
+  let (tyEnv, tydef) = makeTyEnv' a
+      tyEnv' = map (\ (x, t) -> (x, normalizeTy t tydef)) tyEnv
       funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d, f)) defs |
                           (FunDecl (Var f) t defs) <- a]
   in mapM (\ (t, e, f) ->
-              do{(e', vars) <- typeCheck tyEnv (t, e);
-                 return (Var f, t, process vars e')
+              let t' = normalizeTy t tydef in 
+                do{(e', vars) <- typeCheck tyEnv' (t', e);
+                   return (Var f, t', process vars e')
                 })
      funcDefs
 

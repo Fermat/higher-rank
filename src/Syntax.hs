@@ -134,7 +134,7 @@ extend (Subst s1) (Subst s2) =
 normalize' :: Maybe Exp -> Maybe Exp
 normalize' = fmap normalize
 
--- normalize a type/mixed term expression 
+-- normalize a type/mixed term expression without type definitions 
 normalize :: Exp -> Exp
 normalize t = let t1 = norm t
                   t2 = norm t1
@@ -160,6 +160,20 @@ norm (Case e alts) = Case (norm e) alts'
   where alts' = map (\(p, exp) -> (norm p, norm exp)) alts
 norm (Let alts e) = Let alts' (norm e) 
   where alts' = map (\(p, exp) -> (norm p, norm exp)) alts
+
+
+normalizeTy t g = normalize $ normTy t g
+
+normTy (Var a) g = Var a
+normTy (Const a) g =
+  case lookup (Const a) g of
+    Nothing -> (Const a)
+    Just b -> normTy b g
+normTy (Lambda x t) g = Lambda x (normTy t g)
+normTy (Abs x t) g = Abs x (normTy t g)
+normTy (App t' t) g = (App (normTy t' g) (normTy t g))
+normTy (Imply t t') g = Imply (normTy t g) (normTy t' g)
+normTy (Forall x t) g = Forall x (normTy t g)
 
 data Nameless = V Int
               | C Name
