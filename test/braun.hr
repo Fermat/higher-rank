@@ -8,3 +8,23 @@ braunInsert :: forall a . a -> Braun a -> Braun a
 braunInsert a (Leaf b) = Node (Leaf a) (Leaf b)
 braunInsert a (Node l r) = Node (braunInsert a r) l
 
+data List :: * -> * where
+ Nil :: forall a . List a 
+ Cons :: forall a . a -> List a -> List a
+
+data Bool :: * where
+ True :: Bool
+ False :: Bool
+
+toBraun :: forall a . a -> List a -> Braun a
+toBraun a Nil = Leaf a
+toBraun a (Cons x xs) = braunInsert a (toBraun x xs)
+
+merge :: forall a . (a -> a -> Bool) -> List a -> List a -> List a
+merge f Nil ys = ys
+merge f xs Nil = xs
+merge f (Cons x xs) (Cons y ys) =
+  case (f x y) of
+    True -> Cons x (merge f xs (Cons y ys))
+    False -> Cons y (merge f (Cons x xs) ys)
+    
