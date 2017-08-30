@@ -36,5 +36,14 @@ type Pair ::  * -> * -> * = \ a b . forall x . (a -> b -> x) -> x
 pair :: forall a b . a -> b -> Pair a b
 pair x y = \ f -> f x y
 
+fst :: forall a b . Pair a b -> a
+fst = \ p -> p (\ a b -> a)
+
+snd :: forall a b . Pair a b -> b
+snd = \ p -> p (\ a b -> b)
+
 oneP :: Pair Nat Nat
 oneP = pair one one
+
+pred :: Nat -> Nat
+pred n = fst (n (\ r -> pair (snd r) (succ (snd r))) (pair zero zero))

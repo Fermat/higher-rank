@@ -1,0 +1,25 @@
+module churchB where
+
+type Pair ::  * -> * -> * = \ a b . forall x . (a -> b -> x) -> x
+
+pair :: forall a b . a -> b -> Pair a b
+pair x y = \ f -> f x y
+
+fst :: forall a b . Pair a b -> a
+fst = \ p -> p (\ a b -> a)
+
+snd :: forall a b . Pair a b -> b
+snd = \ p -> p (\ a b -> b)
+
+type Braun :: * -> * =
+  \ a . forall x . (a -> x) -> (x -> x -> x) -> x
+
+leaf :: forall a . a -> Braun a
+leaf = \ a l n -> l a
+
+node :: forall a . Braun a -> Braun a -> Braun a
+node left right = \ l n -> n (left l n) (right l n)
+
+-- braunInsert :: forall a . a -> Braun a -> Braun a
+-- braunInsert a b =
+--   snd (b ()) 
