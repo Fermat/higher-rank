@@ -1,0 +1,10 @@
+module braun where
+
+data Braun :: * -> * where
+ Leaf :: forall a . a -> Braun a
+ Node :: forall a . Braun a -> Braun a -> Braun a
+
+braunInsert :: forall a . a -> Braun a -> Braun a
+braunInsert a (Leaf b) = Node (Leaf a) (Leaf b)
+braunInsert a (Node l r) = Node (braunInsert a r) l
+
