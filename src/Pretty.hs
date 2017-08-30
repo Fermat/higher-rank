@@ -143,6 +143,9 @@ instance Disp Decl where
   disp (Prim f t) =
     text "primitive" <+> disp f <+> text "::" <+> disp t
 
+  disp (Syn f t) =
+    text "type" <+> disp f <+> text "=" <+> disp t
+
 instance Disp [Decl] where
   disp ls = vcat $ map disp ls
   

@@ -41,7 +41,7 @@ decl = do
   reserved "module"
   name <- identifier
   reserved "where"
-  bs <- many $ try dataDecl <|> try primDecl <|> funDecl
+  bs <- many $ try dataDecl <|> try primDecl <|> try typeSyn <|> funDecl
   eof
   return $ bs
 
@@ -53,7 +53,16 @@ primDecl = do
   k <- ty
   return $ Prim f k
 
-
+typeSyn :: Parser Decl
+typeSyn = 
+  do reserved "type"
+     tycon <- con
+     vars <- many var
+     reservedOp "="
+     t <- ty
+     let def = foldr (\ x y -> Lambda x y) t vars
+     return $ Syn tycon def
+     
 dataDecl :: Parser Decl
 dataDecl = do
   reserved "data"
@@ -70,7 +79,7 @@ funDecl = do
   v <- var
   reservedOp "::"
   t <- ty
-  ls <- manyTill eq (lookAhead (reserved "data") <|> lookAhead (reserved "primitive") <|> (isNotVar v) <|> try eof)
+  ls <- manyTill eq (lookAhead (reserved "data") <|> lookAhead (reserved "type") <|>lookAhead (reserved "primitive") <|> (isNotVar v) <|> try eof)
   return $ FunDecl v t ls
     where eq = do
             var
@@ -214,7 +223,7 @@ gottlobStyle = Token.LanguageDef
                 , Token.reservedNames =
                   [
                     "forall", "iota", "reduce", 
-                    "coind","use", "intros", "apply", "applyh",
+                    "coind","use", "intros", "apply", "type",
                     "by", "from", "in", "let", "simpCmp", "step",
                     "case", "of",
                     "data", "if", "then", "else",
