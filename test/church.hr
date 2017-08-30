@@ -33,5 +33,8 @@ exp' n m = \ s z ->  (m n) s z
 
 type Pair ::  * -> * -> * = \ a b . forall x . (a -> b -> x) -> x
 
-pair :: forall x y . x -> y -> Pair x y
+pair :: forall a b . a -> b -> Pair a b
 pair x y = \ f -> f x y
+
+oneP :: Pair Nat Nat
+oneP = pair one one
