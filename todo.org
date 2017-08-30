@@ -1,6 +1,6 @@
 * Todo list
 ** DONE Simplify error messaging and the transit function 
 ** DONE Support proof checking
-** TODO Support type synonyms
+** TODO Support type synonyms and Aaron's Church merge sort
 ** TODO Support infix notations, make Bird's program more readable.
 

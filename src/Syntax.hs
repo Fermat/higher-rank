@@ -31,7 +31,7 @@ data Exp = Var Name
 data Decl = DataDecl Exp Exp [(Exp, Exp)]
           | FunDecl Exp Exp [([Exp], Exp)]
           | Prim Exp Exp
-          | Syn Exp Exp
+          | Syn Exp Exp Exp
           deriving (Show)
 
 

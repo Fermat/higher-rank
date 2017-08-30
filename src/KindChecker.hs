@@ -73,7 +73,23 @@ inferKind (Forall x f) =
        _ -> throwError $ text "Kinding error:" $$
             (text "unexpected kind"<+> disp k' <+>
               text "for" <+> disp f)
-                                                  
+
+inferKind (Lambda (Var x) f) = 
+  do k <- makeName "k"
+     lift $ modify (\e -> (x, Var k): e)
+     fk <- inferKind f
+     env <- lift get
+     case lookup x env of
+       Nothing -> error "internal error from inferKind"
+       Just k'' -> return $ Imply k'' fk
+     
+     -- let k' = grounding k
+     -- case k' of
+     --   Star -> return Star
+     --   _ -> throwError $ text "Kinding error:" $$
+     --        (text "unexpected kind"<+> disp k' <+>
+     --          text "for" <+> disp f)
+            
 inferKind (Imply f1 f2) = 
   do k1 <- inferKind f1
      k2 <- inferKind f2
@@ -94,46 +110,78 @@ runKinding' t g = runReaderT (runStateT (evalStateT (inferKind t) 0) []) g
 
 instance Exception Doc 
 
-getKindDef a = [(d, k) | (DataDecl (Const d) k ls)<- a ]
-
+getKindDef ((DataDecl (Const d) k ls):as) = (d, k) : getKindDef as
+getKindDef ((Syn (Const d) k t):as) = (d, k) : getKindDef as
+getKindDef (_:as) = getKindDef as
+getKindDef [] = []
 
 splitDecl ((DataDecl _ _ cons):xs) =
-  let (d, f, p) = splitDecl xs in
-    (cons++d, f, p)
+  let (d, f, p, t) = splitDecl xs in
+    (cons++d, f, p, t)
 splitDecl ((FunDecl (Var fun) t _):xs) =
-  let (d, f, p) = splitDecl xs in
-    (d, (Var fun, t):f, p)
+  let (d, f, p, ty) = splitDecl xs in
+    (d, (Var fun, t):f, p, ty)
 splitDecl ((Prim fun t):xs) =
-  let (d, f, p) = splitDecl xs in
-    (d, f, (fun, t):p)
-splitDecl [] = ([], [], [])
+  let (d, f, p, ty) = splitDecl xs in
+    (d, f, (fun, t):p, ty)
+splitDecl ((Syn ty k t):xs) =
+  let (d, f, p, ty') = splitDecl xs in
+    (d, f, p, (ty, t, k):ty')    
+splitDecl [] = ([], [], [], [])
 
-
-kinding :: [Decl] -> IO ()
-kinding a =
-  let g = getKindDef a
-      (ds, fs, ps) = splitDecl a
-      res = mapM (\ (x, e) -> runKinding e g `catchError`
+kindData ds g =
+  let res = mapM (\ (x, e) -> runKinding e g `catchError`
                    (\ err -> throwError
-                             (err $$ text "in the type of the data constructor" <+> disp x)))
+                     (err $$ text "in the type of the data constructor" <+> disp x)))
             ds in
     case res of
       Left e -> throw e
-      Right _ ->
-        let res1 = mapM (\ (x, e) -> (runKinding e g) `catchError`
-                            (\ e -> throwError
-                                    (e $$ text "in the type of the function" <+> disp x)))
-                   fs in
-          case res1 of
-            Left e -> throw e
-            Right _ ->
-              let res2 = mapM (\ (x, e) -> (runKinding e g) `catchError`
-                                (\ e -> throwError
-                                        (e $$ text "in the type of the primitive function"
-                                         <+> disp x)))
-                         ps in
-                case res2 of
-                  Left e -> throw e
-                  Right _ -> print $ text "kinding success!\n"
+      Right _ -> return ()
 
-      
+kindFunc fs g =
+  let res1 = mapM (\ (x, e) -> (runKinding e g) `catchError`
+                               (\ e -> throwError
+                                 (e $$ text "in the type of the function" <+> disp x)))
+             fs in
+    case res1 of
+      Left e -> throw e
+      Right _ -> return ()
+
+kindPrim ps g =
+  let res2 = mapM (\ (x, e) -> (runKinding e g) `catchError`
+                               (\ e -> throwError
+                                       (e $$ text "in the type of the primitive function"
+                                         <+> disp x)))
+             ps in
+    case res2 of
+      Left e -> throw e
+      Right _ -> return ()
+
+kindTysyn tsyns g = 
+  let res3 = mapM (\ (ty,t, k) ->
+                      case runKinding t g of
+                        Left e -> throw e
+                        Right k' -> 
+                          let k'' = grounding k' in 
+                            if k == k'' then
+                              return ()
+                            else
+                              throwError
+                              (text "kind mistmatch for"
+                                <+> disp ty $$ nest 2
+                                (text "expected:" <+> disp k)
+                                $$ nest 2 (text "but got:" <+> disp k')))
+             tsyns in
+    case res3 of
+      Left e -> throw e
+      Right _ -> return ()
+
+kinding :: [Decl] -> IO ()
+kinding a =
+  do let g = getKindDef a
+         (ds, fs, ps, tsyns) = splitDecl a
+     kindData ds g
+     kindTysyn tsyns g
+     kindPrim ps g
+     kindFunc fs g
+     print $ text "kinding success!\n"

@@ -57,11 +57,11 @@ typeSyn :: Parser Decl
 typeSyn = 
   do reserved "type"
      tycon <- con
-     vars <- many var
+     reservedOp "::"
+     k <- ty
      reservedOp "="
      t <- ty
-     let def = foldr (\ x y -> Lambda x y) t vars
-     return $ Syn tycon def
+     return $ Syn tycon k t
      
 dataDecl :: Parser Decl
 dataDecl = do
@@ -112,12 +112,19 @@ ty :: Parser Exp
 ty = buildExpressionParser typeOpTable bType
 
 bType :: Parser Exp
-bType = try forall <|> try atomType <|> parens ty
+bType = try lamType <|> try forall <|> try atomType <|> parens ty
 
 binOp assoc op f = Infix (reservedOp op >> return f) assoc
 
 typeOpTable = [[binOp AssocRight "->" Imply]]
 
+lamType = do
+  reservedOp "\\"
+  as <- many1 $ var
+  reservedOp "."
+  t <- ty
+  return $ foldr (\ x y -> Lambda x y) t as  
+  
 atomType = do
   n <- try star <|> try var <|> try con <|> parens atomType
   as <- many $ indented >> arg
