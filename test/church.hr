@@ -46,5 +46,16 @@ oneP :: Pair Nat Nat
 oneP = pair one one
 
 pred :: Nat -> Nat
--- pred n = fst (n (\ r -> r) (pair zero zero))
 pred n = fst (n (\ r -> pair (snd r) (succ (snd r))) (pair zero zero))
+
+type List :: * -> * =   \ a . forall x . (a -> x -> x) -> x -> x
+
+nil :: forall a . List a
+nil = \ c n -> n
+
+cons :: forall a . a -> List a -> List a
+cons = \ a as c n -> c a (as c n)
+
+tail :: forall a . List a -> (List a) 
+tail l =  fst (l (\ a r -> pair (snd r) (cons a (snd r))) (pair nil nil))
+

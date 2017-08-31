@@ -20,3 +20,15 @@ snd = \ p -> p (\ a b -> b)
 
 pred :: Nat -> Nat
 pred n = fst (n (pair zero zero) (\ r -> pair (snd r) (succ (snd r))))
+
+type List :: * -> * =   \ a . forall x . x -> (a -> x -> x) -> x
+
+nil :: forall a . List a
+nil = \ n c -> n
+
+cons :: forall a . a -> List a -> List a
+cons = \ a as n c -> c a (as n c)
+
+tail :: forall a . List a -> (List a)
+tail l =  fst (l (pair nil nil) (\ a r -> pair (snd r) (cons a (snd r))))
+-- tail l =  fst (l (pair nil nil) (\ a r -> pair (cons a (snd r)) (cons a (snd r))))

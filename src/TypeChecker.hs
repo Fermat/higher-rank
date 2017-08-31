@@ -62,7 +62,8 @@ process fv (Let alts e) = Let alts' (process fv e)
 process fv e = error $ "from process " ++ show e 
 
 
-checkDecls :: [Decl] -> Either Doc [(Exp, Exp, Exp)]  
+checkDecls :: [Decl] -> Either Doc [(Exp, Exp, Exp)]
+-- checkDecls state | trace ("checkdecl " ++show ("hi") ++"\n") False = undefined
 checkDecls a =
   let (tyEnv, tydef) = makeTyEnv' a
       tyEnv' = map (\ (x, t) -> (x, normalizeTy t tydef)) tyEnv
@@ -296,11 +297,34 @@ getValue :: [(Exp, Int)] -> Int
 getValue [] = 1
 getValue xs = (maximum $ map snd xs) + 1
 
+-- arranging the order of subgoals is a heuristic, we want to first solve
+-- the subgoal that give us the most information. In this case, we want to
+-- to solve the most sophisticated subgoal first, because sophisticated subgoal
+-- contains more information. The notion of sophistication of
+-- a subgoal is defined by the number of implication it has, and whether
+-- the subgoal is a variable or a constant.
+-- TLDR: arranging subgoals is basically a black magic
+-- measure state | trace ("measure " ++show (state) ++"\n") False = undefined
+measure :: Exp -> Int
+measure (Var _) = 0
+measure (Const _) = 1
+measure (Imply a b) = (measure a) + (measure b) + 1
+measure (Forall a b) = measure b
+measure (App a b) = 1
 
-arrange :: [((Pos, Exp), Exp)] -> ([((Pos, Exp), Exp)], [((Pos, Exp), Exp)])
-arrange ls =  partition helper ls
-  where helper ((p,(Var _)), (Lambda _ _)) = False
-        helper _ = True
+-- sortGT state1 state2 | trace ("sortGT " ++show (state1) ++"\n") False = undefined
+sortGT ((p1, g1),e1) ((p2, g2),e2)
+  | measure g1 < measure g2 = GT
+  | measure g1 > measure g2 = LT
+  | measure g1 == measure g2 = EQ
+  
+arrange :: [((Pos, Exp), Exp)] -> [((Pos, Exp), Exp)]
+-- ([((Pos, Exp), Exp)], [((Pos, Exp), Exp)])
+-- arrange state1 | trace ("arrange " ++show (state1) ++"\n") False = undefined
+arrange l = sortBy sortGT l 
+-- arrange ls =  partition helper ls
+--   where helper ((p,(Var _)), (Lambda _ _)) = False
+--         helper _ = True
 
 
 
@@ -327,7 +351,7 @@ matchError imp goal y f pf =
    nest 2 (disp pf))
 
 transit :: ResState -> [ResState]
---transit state | trace ("transit " ++show (state) ++"\n") False = undefined
+transit state | trace ("transit " ++show (state) ++"\n") False = undefined
 transit (Res pf
           ((Phi pos
              (Just goal@(Forall x y))
@@ -633,17 +657,17 @@ transit (Res pf
                                    (\(x, y) ->
                                        (x, normalize $ apply (Subst sub) y))
                                    gamma
-                          (high, low) = arrange $ zip (zip ps body1) xs
-                          (high', low') = (map (\((p, g),e ) ->
+                          highlow = arrange $ zip (zip ps body1) xs
+                          highlow' = map (\((p, g),e ) ->
                                                    (Phi p (Just g) (Just e) gamma' lvars'))
-                                            high,
-                                            map (\((p, g),e ) ->
-                                                    (Phi p (Just g) (Just e) gamma' lvars'))
-                                            low)
+                                     highlow
+                                            -- map (\((p, g),e ) ->
+                                            --         (Phi p (Just g) (Just e) gamma' lvars'))
+                                            -- low)
                           phi' = applyPhi sub phi
                       in case phi' of
                            Right p ->
-                             return $ Res pf'' (high'++low'++p) Nothing j
+                             return $ Res pf'' (highlow'++p) Nothing j
                            Left m' ->
                              let mess = text "globally," <+>
                                         scopeError newHead goal' f v sub lvars pf
@@ -664,6 +688,7 @@ transit (Res pf
 transit e = [e]
           
 ersm :: [ResState] -> Either Doc (Exp, [Name])
+-- ersm state | trace ("ersm " ++show ("hi") ++"\n") False = undefined
 ersm init = let s = concat $ map transit init
                 (fails, pending) = partition failure s
                 flag = length fails == length s

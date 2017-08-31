@@ -163,14 +163,15 @@ norm (Case e alts) = Case (norm e) alts'
 norm (Let alts e) = Let alts' (norm e) 
   where alts' = map (\(p, exp) -> (norm p, norm exp)) alts
 
-
+-- normalizeTy t g | trace ("normalizeTy " ++show ("hi") ++"\n") False = undefined
 normalizeTy t g = normalizeT $ normTy t g
 
 normalizeT :: Exp -> Exp
+-- normalizeT t | trace ("normalizeT " ++show ("hi") ++"\n") False = undefined
 normalizeT t = let t1 = normalizeTypeDef t
                    t2 = normalizeTypeDef t1
                in if t1 `alphaEq` t2 then t1 else normalizeT t2 
-
+-- normalizeTypeDef t | trace ("normalizeTypeDef " ++show ("hi") ++"\n") False = undefined
 normalizeTypeDef (Var a) = Var a
 normalizeTypeDef (Const a) = Const a
 normalizeTypeDef (Lambda x t) = Lambda x (normalizeTypeDef t)
@@ -183,7 +184,7 @@ normalizeTypeDef (App t' t) =
     b -> b
 normalizeTypeDef (Imply t t') = Imply (normalizeTypeDef t) (normalizeTypeDef t')
 normalizeTypeDef (Forall x t) = Forall x (normalizeTypeDef t)
- 
+-- normTy t g | trace ("normTy " ++show ("hi") ++"\n") False = undefined 
 normTy (Var a) g = Var a
 normTy (Const a) g =
   case lookup (Const a) g of
