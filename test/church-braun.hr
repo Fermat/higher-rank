@@ -37,8 +37,8 @@ tail l =  fst (l (pair nil nil) (\ a r -> pair (snd r) (cons a (snd r))))
 -- real :: forall a . List a -> List a
 -- real l = fst (tail' l)
 
--- tail :: forall a . List a -> Pair (List a) (List a)
--- tail l = l (pair nil nil) (\ a r -> r (\ x y -> pair y (cons a y)))
+tail' :: forall a . List a -> Pair (List a) (List a)
+tail' l = l (pair nil nil) (\ a r -> r (\ x y -> pair y (cons a y)))
 
 type Braun :: * -> * =
   \ a . forall x . (a -> x) -> (x -> x -> x) -> x
@@ -56,18 +56,18 @@ braunInsert a b =
          (\ pl pr -> pl (\ ll il -> pr (\ rr ir -> pair (node ll rr) (node ir ll)))))
 
 -- This function seems to be incorrect, needed to double check
--- toBraun :: forall a . a -> List a -> Braun a
--- toBraun a l = l (leaf a) (\ b r ->  braunInsert b r)
+toBraun :: forall a . a -> List a -> Braun a
+toBraun a l = l (leaf a) (\ b r ->  braunInsert b r)
 
 primitive merge :: forall a . (a -> a -> Bool) -> List a -> List a -> List a
 -- merge f l1 l2 =
 
--- mergeSorth :: forall a . (a -> a -> Bool) -> Braun a -> List a
--- mergeSorth f t = t (\ a -> cons a nil) (\ l r -> merge f l r)
+mergeSorth :: forall a . (a -> a -> Bool) -> Braun a -> List a
+mergeSorth f t = t (\ a -> cons a nil) (\ l r -> merge f l r)
 
--- mergeSort :: forall a . (a -> a -> Bool) -> List a -> List a
--- mergeSort f l = let h = head l
---                     tl = tail l
---                 in mergeSorth f (toBraun h tl)
+mergeSort :: forall a . (a -> a -> Bool) -> List a -> List a
+mergeSort f l = let h = head l
+                    tl = tail l
+                in mergeSorth f (toBraun h tl)
                 
                        
