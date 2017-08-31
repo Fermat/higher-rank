@@ -31,8 +31,14 @@ cons = \ a as n c -> c a (as n c)
 head :: forall a . List a -> a
 head l = l undefined (\ a r -> a)
 
-tail :: forall a . List a -> List a
-tail l = fst (l (pair nil nil) (\ a r -> pair (snd r) (snd r)))
+tail' :: forall a . List a -> (List a) 
+tail' l =  fst (l (pair nil nil) (\ a r -> pair (snd r) (cons a (snd r))))
+
+-- real :: forall a . List a -> List a
+-- real l = fst (tail' l)
+
+-- tail :: forall a . List a -> Pair (List a) (List a)
+-- tail l = l (pair nil nil) (\ a r -> r (\ x y -> pair y (cons a y)))
 
 type Braun :: * -> * =
   \ a . forall x . (a -> x) -> (x -> x -> x) -> x
@@ -58,9 +64,9 @@ primitive merge :: forall a . (a -> a -> Bool) -> List a -> List a -> List a
 mergeSorth :: forall a . (a -> a -> Bool) -> Braun a -> List a
 mergeSorth f t = t (\ a -> cons a nil) (\ l r -> merge f l r)
 
-mergeSort :: forall a . (a -> a -> Bool) -> List a -> List a
-mergeSort f l = let h = head l
-                    tl = tail l
-                in mergeSorth f (toBraun h tl)
+-- mergeSort :: forall a . (a -> a -> Bool) -> List a -> List a
+-- mergeSort f l = let h = head l
+--                     tl = tail l
+--                 in mergeSorth f (toBraun h tl)
                 
                        
