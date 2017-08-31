@@ -20,19 +20,19 @@ fst = \ p -> p (\ a b -> a)
 snd :: forall a b . Pair a b -> b
 snd = \ p -> p (\ a b -> b)
 
-type List :: * -> * =   \ a . forall x . x -> (a -> x -> x) -> x
+type List :: * -> * =   \ a . forall x .  (a -> x -> x) -> x -> x
 
 nil :: forall a . List a
-nil = \ n c -> n
+nil = \ c n -> n
 
 cons :: forall a . a -> List a -> List a
-cons = \ a as n c -> c a (as n c)
+cons = \ a as c n -> c a (as c n)
 
 head :: forall a . List a -> a
-head l = l undefined (\ a r -> a)
+head l = l (\ a r -> a) undefined
 
 tail' :: forall a . List a -> (List a) 
-tail' l =  fst (l (pair nil nil) (\ a r -> pair (snd r) (cons a (snd r))))
+tail' l =  fst (l (\ a r -> pair (snd r) (snd r)) (pair nil nil))
 
 -- real :: forall a . List a -> List a
 -- real l = fst (tail' l)
@@ -55,14 +55,15 @@ braunInsert a b =
                        (node (leaf a) (leaf aa)))
          (\ pl pr -> pl (\ ll il -> pr (\ rr ir -> pair (node ll rr) (node ir ll)))))
 
-toBraun :: forall a . a -> List a -> Braun a
-toBraun a l = l (leaf a) (\ b r ->  braunInsert b r)
+-- This function seems to be incorrect, needed to double check
+-- toBraun :: forall a . a -> List a -> Braun a
+-- toBraun a l = l (leaf a) (\ b r ->  braunInsert b r)
 
 primitive merge :: forall a . (a -> a -> Bool) -> List a -> List a -> List a
 -- merge f l1 l2 =
 
-mergeSorth :: forall a . (a -> a -> Bool) -> Braun a -> List a
-mergeSorth f t = t (\ a -> cons a nil) (\ l r -> merge f l r)
+-- mergeSorth :: forall a . (a -> a -> Bool) -> Braun a -> List a
+-- mergeSorth f t = t (\ a -> cons a nil) (\ l r -> merge f l r)
 
 -- mergeSort :: forall a . (a -> a -> Bool) -> List a -> List a
 -- mergeSort f l = let h = head l

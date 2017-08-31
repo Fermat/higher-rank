@@ -1,0 +1,22 @@
+module church where
+type Nat :: * = forall x . x -> (x -> x) -> x
+
+zero :: Nat
+zero = \ z s -> z
+
+succ :: Nat -> Nat
+succ n = \ z s -> s (n z s)
+
+type Pair ::  * -> * -> * = \ a b . forall x . (a -> b -> x) -> x
+
+pair :: forall a b . a -> b -> Pair a b
+pair x y = \ f -> f x y
+
+fst :: forall a b . Pair a b -> a
+fst = \ p -> p (\ a b -> a)
+
+snd :: forall a b . Pair a b -> b
+snd = \ p -> p (\ a b -> b)
+
+pred :: Nat -> Nat
+pred n = fst (n (pair zero zero) (\ r -> pair r))
