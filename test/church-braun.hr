@@ -20,19 +20,19 @@ fst = \ p -> p (\ a b -> a)
 snd :: forall a b . Pair a b -> b
 snd = \ p -> p (\ a b -> b)
 
-type List :: * -> * =   \ a . forall x .  (a -> x -> x) -> x -> x
+type List :: * -> * =   \ a . forall x . x -> (a -> x -> x) -> x
 
 nil :: forall a . List a
-nil = \ c n -> n
+nil = \ n c -> n
 
 cons :: forall a . a -> List a -> List a
-cons = \ a as c n -> c a (as c n)
+cons = \ a as n c -> c a (as n c)
 
 head :: forall a . List a -> a
-head l = l (\ a r -> a) undefined
+head l = l undefined (\ a r -> a) 
 
-tail' :: forall a . List a -> (List a) 
-tail' l =  fst (l (\ a r -> pair (snd r) (snd r)) (pair nil nil))
+tail :: forall a . List a -> (List a) 
+tail l =  fst (l (pair nil nil) (\ a r -> pair (snd r) (cons a (snd r))))
 
 -- real :: forall a . List a -> List a
 -- real l = fst (tail' l)

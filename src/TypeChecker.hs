@@ -455,8 +455,10 @@ transit (Res pf
           let m' = Just $ text "can't find" <+> text y
                    <+> text "in the environment" 
           in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
-        Just f | isVar f ->
-            let sub = [(getName f, goal)] in
+        Just f | isVar f || isVar goal ->
+            let sub = if isVar f then [(getName f, goal)]
+                  else if isVar goal then [(getName goal, f)]
+                  else error "internal error from transit" in
             if scopeCheck lvars sub then
               let lvars' = applyS sub lvars
                   gamma' = map (\ (x, t) ->

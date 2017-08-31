@@ -19,4 +19,4 @@ snd :: forall a b . Pair a b -> b
 snd = \ p -> p (\ a b -> b)
 
 pred :: Nat -> Nat
-pred n = fst (n (pair zero zero) (\ r -> pair r))
+pred n = fst (n (pair zero zero) (\ r -> pair (snd r) (succ (snd r))))
