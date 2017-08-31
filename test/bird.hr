@@ -1,5 +1,5 @@
 module Bird where
-{-
+
 data List :: * -> * where
  Nil :: forall a . List a 
  Cons :: forall a . a -> List a -> List a
@@ -39,7 +39,7 @@ mapT' = fix (\ mt -> \ f t ->
 		     Var x -> Var (f x)
 		     App t1 t2 -> App (mt f t1) (mt f t2)
 		     Lam t -> Lam (mt (mapI f) t))
--}
+
 
 primitive undefined :: forall a . a
 data Term :: * -> * where
@@ -54,10 +54,10 @@ data Incr :: * -> * where
 gfoldT :: forall m n b . (forall a. m a -> n a) -> (forall a. n a -> n a -> n a) ->
        	    (forall a. n (Incr a) -> n a) -> (forall a. Incr (m a) -> m (Incr a)) ->
 	    	    Term (m b) -> n b
--- gfoldT v a l k (Var x) = v x
+gfoldT v a l k (Var x) = v x
 
 gfoldT v a l k (App p1 p2) = a (gfoldT v a l k p1) undefined -- (gfoldT v a l k p2) 
-{-
+
 gfoldT v a l k (Lam t) = l (gfoldT v a l k ((mapT k) t))
 
 foldT :: forall n b . (forall a. a -> n a) -> (forall a. n a -> n a -> n a) ->
@@ -118,4 +118,3 @@ cvtE x = gfoldE Var App (\ x -> Lam (joinT (mapT distT x))) id x
 
 cvtBodyE :: forall a . TermE (Incr (TermE a)) -> Term (Incr a)
 cvtBodyE x = joinT (mapT distT (cvtE (mapE (mapI cvtE) x)))
--}

@@ -231,6 +231,7 @@ makeZeros 0 = []
 makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
 applyS :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)]
+-- applyS state g | trace ("applyS " ++show ("hi") ++"\n") False = undefined
 applyS sub l = applyS' sub l []
   where applyS' :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)] -> [(Exp, Int)]
         applyS' sub [] store = store           
@@ -257,6 +258,7 @@ applyS sub l = applyS' sub l []
 
 
 scopeCheck :: [(Exp, Int)] -> [(Name, Exp)] -> Bool
+-- scopeCheck state g | trace ("scopeCheck " ++show ("hi") ++"\n") False = undefined
 scopeCheck lvars [] = True 
 scopeCheck lvars ((x, e):xs) =
   case lookup (Var x) lvars of
@@ -351,7 +353,7 @@ matchError imp goal y f pf =
    nest 2 (disp pf))
 
 transit :: ResState -> [ResState]
-transit state | trace ("transit " ++show (state) ++"\n") False = undefined
+-- transit state | trace ("transit " ++show (state) ++"\n") False = undefined
 transit (Res pf
           ((Phi pos
              (Just goal@(Forall x y))

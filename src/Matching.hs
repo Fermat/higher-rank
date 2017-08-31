@@ -110,9 +110,9 @@ match e1 e2 | (Var x):xs <- flatten e1, (Const y):ys <- flatten e2 =
                    let renew = normalize $ apply (Subst [(x, imi)]) e1
                        pis = map (\ (a, b) ->
                                   (normalize $ apply (Subst [(x, a)]) b,
-                                    normalize $ apply (Subst [(x, a)]) e2))
+                                    e2)) -- normalize $ apply (Subst [(x, a)]) 
                              (zip prjs xs)
-                       imiAndProj = (renew, normalize $ apply (Subst [(x, imi)]) e2) : pis
+                       imiAndProj = (renew, e2) : pis -- normalize $ apply (Subst [(x, imi)]) e2
                        oldsubst = [(x, imi)]: map (\ y -> [(x,y)]) prjs
                    bs <- mapM (\ ((a, b), u) ->
                                   do{s <- match a b;
