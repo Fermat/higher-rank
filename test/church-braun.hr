@@ -9,6 +9,9 @@ true = \ t f -> t
 false :: Bool
 false = \ t f -> f
 
+if :: forall x . Bool -> x -> x -> x
+if b e1 e2 = b e1 e2
+
 type Pair ::  * -> * -> * = \ a b . forall x . (a -> b -> x) -> x
 
 pair :: forall a b . a -> b -> Pair a b
@@ -51,7 +54,8 @@ tail l =  fst (l (pair nil nil) (\ a r -> pair (snd r) (cons a (snd r))))
 head :: forall a . List a -> Maybe a
 head l = l nothing (\ a r -> just a)
 
-
+caseMaybe :: forall a x . Maybe a -> (a -> x) -> x -> x
+caseMaybe m j n = m j n
 
 type Braun :: * -> * =
   \ a . forall x . (a -> x) -> (x -> x -> x) -> x
@@ -76,13 +80,13 @@ merge :: forall a . (a -> a -> Bool) -> List a -> List a -> List a
 merge f la = la (\ laa lbb -> lbb)
                 (\ a outer ->
                      \ la' lb ->
-                         head la'
+                         caseMaybe (head la') 
                            (\ ha ->
                                 lb (\ lb'' -> la')
                                    (\ b inner ->
-                                          \ lb' -> head lb'
+                                          \ lb' -> caseMaybe (head lb')
                                                    (\ hb ->
-                                                         f ha hb
+                                                         if (f ha hb)
                                                           (cons ha (outer (tail la') lb'))
                                                           (cons hb (inner (tail lb'))))
                                                    la')
@@ -90,8 +94,8 @@ merge f la = la (\ laa lbb -> lbb)
                             lb)
                 la
 
--- mergeSorth :: forall a . (a -> a -> Bool) -> Braun a -> List a
--- mergeSorth f t = t (\ a -> cons a nil) (\ l r -> merge f l r)
+mergeSorth :: forall a . (a -> a -> Bool) -> Braun a -> List a
+mergeSorth f t = t (\ a -> cons a nil) (\ l r -> merge f l r)
 
 -- mergeSort :: forall a . (a -> a -> Bool) -> List a -> List a
 -- mergeSort f l = let h = head l

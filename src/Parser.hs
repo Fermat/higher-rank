@@ -233,7 +233,7 @@ gottlobStyle = Token.LanguageDef
                     "coind","use", "intros", "apply", "type",
                     "by", "from", "in", "let", "simpCmp", "step",
                     "case", "of",
-                    "data", "if", "then", "else",
+                    "data", 
                     "axiom", "proof", "qed", "lemma", "auto", "primitive",
                     "show",
                     "where", "module",
