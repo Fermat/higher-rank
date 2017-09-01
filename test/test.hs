@@ -3,11 +3,11 @@ data F :: * -> *
 data Void :: *  
 l :: forall x . F x -> F x  
 l = undefined 
-
+type A = A
 what :: (forall x . F x) -> Void
 what = what
 
-dom (f a) = a
+
 
 fix :: forall a . (a -> a) -> a
 fix f = f (fix f)

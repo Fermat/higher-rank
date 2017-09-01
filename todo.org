@@ -2,6 +2,7 @@
 ** DONE Simplify error messaging and the transit function 
 ** DONE Support proof checking
 ** DONE Support type synonyms 
-** TODO Aaron's Church merge sort
+** DONE Aaron's Church merge sort
+** TODO Better type checking error message
 ** TODO Support infix notations, make Bird's program more readable.
 
