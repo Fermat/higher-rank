@@ -71,15 +71,15 @@ checkDecls a =
                           (FunDecl (Var f) t defs) <- a]
   in mapM (\ (t, e, f) ->
               let t' = normalizeTy t tydef in 
-                do{(e', vars) <- typeCheck tyEnv' (t', e);
+                do{(e', vars) <- typeCheck f tyEnv' (t', e);
                    return (Var f, t', process vars e')
                 })
      funcDefs
 
-typeCheck :: TyEnv -> (Exp, Exp) -> Either Doc (Exp, [Name])
-typeCheck env (goal, e) =
+typeCheck :: Name -> TyEnv -> (Exp, Exp) -> Either Doc (Exp, [Name])
+typeCheck f env (goal, e) =
   let phi = Phi [] (Just goal) (Just e) env []
-      init = Res goal [phi] Nothing 0
+      init = Res f goal [phi] Nothing 0
   in ersm [init] 
     
 
@@ -94,6 +94,7 @@ data Phi = Phi{
 
 -- Resolution state
 data ResState = Res{
+  funName :: Name,
   mixedTerm :: Exp,
   phi :: [Phi],
   errMessage :: Maybe Doc,
@@ -330,7 +331,8 @@ arrange l = sortBy sortGT l
 
 
 
-scopeError imp goal f y sub lvars pf =
+scopeError fun imp goal f y sub lvars pf exp =
+  text "when checking function" <+> text fun $$
   text "scope error when matching" <+> disp imp $$
   text "against"<+> disp (goal)$$
   (nest 2 (text "when applying" <+> text y <+> text ":"
@@ -341,20 +343,23 @@ scopeError imp goal f y sub lvars pf =
     nest 2 (hsep $ map (\(x,i) ->
                           parens $ disp x <+> comma <+> int i)
              lvars)) $$
+  (nest 2 $ text "the current expression:" <+> disp exp) $$
   (nest 2 $ text "the current mixed proof term:" $$
    nest 2 (disp pf))
 
-matchError imp goal y f pf =
+matchError fun imp goal y f pf exp =
+  text "when type checking the function" <+> text fun $$
   text "can't match" <+> disp imp $$
   text "against" <+> disp goal $$
   (nest 2 (text "when applying" <+>text y <+> text ":"
            <+> disp f)) $$
+  (nest 2 (text "current expression:" <+> disp exp)) $$
   (nest 2 $ text "current mixed proof term" $$
    nest 2 (disp pf))
 
 transit :: ResState -> [ResState]
 -- transit state | trace ("transit " ++show (state) ++"\n") False = undefined
-transit (Res pf
+transit (Res fun pf
           ((Phi pos
              (Just goal@(Forall x y))
              (Just exp@(Lambda _ _)) gamma lvars):phi)
@@ -369,7 +374,7 @@ transit (Res pf
       newAbs = foldr (\ a b -> Abs a b) imp' absNames
       pf' = replace pf pos newAbs
       pos' = pos ++ take lv stream1
-  in [(Res pf'
+  in [(Res fun pf'
        ((Phi pos'
           (Just imp')
           (Just exp)
@@ -378,7 +383,7 @@ transit (Res pf
        Nothing (i+lv))]
 
 
-transit (Res pf
+transit (Res fun pf
           ((Phi pos
              (Just goal@(Imply _ _))
              (Just exp@(Lambda _ _ )) gamma lvars):phi)
@@ -410,9 +415,9 @@ transit (Res pf
                 [(Phi boPos (Just h') (Just b') (concat thetas ++ gamma) lvars')]
       newLam = foldr (\ a b -> Lambda (Ann a a) b) h' bs
       pf' = replace pf pos newLam
-  in [(Res pf' (newEnv' ++ phi) Nothing j)]
+  in [(Res fun pf' (newEnv' ++ phi) Nothing j)]
 
-transit (Res pf
+transit (Res fun pf
           ((Phi pos
              (Just goal)
              (Just exp@(Case e alts))
@@ -440,9 +445,9 @@ transit (Res pf
       newEnv = (Phi (pos++[0]) (Just (Var y)) (Just e) gamma lvars'):altsEnv
       newCase = Case (Ann (Var y) (Var y)) $ replicate len ((Var y), goal) 
       pf' = replace pf pos newCase
-  in [(Res pf' (newEnv++phi) Nothing j)]
+  in [(Res fun pf' (newEnv++phi) Nothing j)]
 
-transit (Res pf
+transit (Res fun pf
           ((Phi pos
              (Just goal)
              (Just exp@(Let defs e)) gamma lvars):phi)
@@ -467,9 +472,9 @@ transit (Res pf
         [(Phi (pos++[1]) (Just goal) (Just e) (thetas ++gamma) lvars')] ++ defsEnv
       newLet = Let (map (\ (a,b,c,d) -> ((Ann b b), b)) tps) goal 
       pf' = replace pf pos newLet
-  in [(Res pf' (newEnv++phi) Nothing j')]
+  in [(Res fun pf' (newEnv++phi) Nothing j')]
       
-transit (Res pf
+transit (Res fun pf
           ((Phi pos
              (Just goal)
              (Just exp) gamma lvars):phi)
@@ -480,7 +485,7 @@ transit (Res pf
         Nothing ->
           let m' = Just $ text "can't find" <+> text y
                    <+> text "in the environment" 
-          in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+          in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
         Just f | isVar f || isVar goal ->
             let sub = if isVar f then [(getName f, goal)]
                   else if isVar goal then [(getName goal, f)]
@@ -494,21 +499,21 @@ transit (Res pf
                   pf'' = replace pf' pos exp
               in case applyPhi sub phi of 
                    Right p ->
-                     return (Res pf''
+                     return (Res fun pf''
                               (p++[Phi pos Nothing Nothing gamma' lvars'])
                               Nothing i)
                    Left m' ->
                      let mess = text "globally, " <+>
-                                scopeError f goal f y sub lvars pf
+                                scopeError fun f goal f y sub lvars pf exp
                          m1 = m' $$ nest 2 mess
-                     in [Res pf
+                     in [Res fun pf
                           ((Phi pos
                              (Just goal)
                              (Just exp) gamma lvars):phi)
                           (Just m1) i]                         
                              
-            else let mess = scopeError f goal f y sub lvars pf 
-                 in [Res pf
+            else let mess = scopeError fun f goal f y sub lvars pf exp
+                 in [Res fun pf
                       ((Phi pos
                         (Just goal)
                         (Just exp) gamma lvars):phi)
@@ -538,8 +543,8 @@ transit (Res pf
               ss = runMatch imp2' goal1
           in case ss of
               [] ->
-                let m' = matchError imp2' goal1 y f pf 
-                in [(Res pf
+                let m' = matchError fun imp2' goal1 y f pf exp
+                in [(Res fun pf
                       ((Phi pos
                          (Just goal)
                          (Just exp) gamma lvars):phi)
@@ -562,25 +567,25 @@ transit (Res pf
                          phi' = applyPhi sub' phi 
                      in case phi' of
                           Right p ->
-                            return (Res pf''
+                            return (Res fun pf''
                                      (p++[Phi pos1 Nothing Nothing gamma' lvars'])
                                      Nothing i')
                           Left m' ->
                             let mess = text "globally, " <+>
-                                       scopeError imp2' goal1 f y sub' lvars pf
+                                       scopeError fun imp2' goal1 f y sub' lvars pf exp
                                 m1 = m' $$ nest 2 mess 
-                            in [Res pf
+                            in [Res fun pf
                                  ((Phi pos (Just goal)
                                     (Just exp) gamma lvars):phi)
                                  (Just m1) i]
-                     else let mess = scopeError imp2' goal1 f y sub' lvars1 pf 
-                          in [Res pf
+                     else let mess = scopeError fun imp2' goal1 f y sub' lvars1 pf exp
+                          in [Res fun pf
                                ((Phi pos (Just goal)
                                   (Just exp) gamma lvars):phi)
                                (Just mess) i]
 
 
-transit (Res pf
+transit (Res fun pf
           ((Phi pos
              (Just goal)
              (Just exp) gamma lvars):phi)
@@ -589,21 +594,22 @@ transit (Res pf
     (Var v) : xs -> handle v xs
     (Const v) : xs -> handle v xs
     a ->
-      let m' = Just $ (text "need more information to check expression:" <+> disp exp) $$
+      let m' = Just $ text "when checking function" <+> text fun $$
+               (text "need more information to check expression:" <+> disp exp) $$
                (text "current goal: " <+> disp goal) $$
                (nest 2 $ text "current mixed proof term" $$
                  nest 2 (disp pf)) $$
                (nest 2 $ text "current env" $$
                  nest 2 (disp gamma)) 
-      in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+      in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
 
   where
     handle v xs =
       case lookup v gamma of
         Nothing ->
           let m' = Just $ text "can't find" <+> text v
-                   <+> text "in the environment" 
-          in [(Res pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+                   <+> text "in the environment" $$ text "when checking function" <+> text fun
+          in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
         Just f ->
           let (vars, head, body) = separate f
               i' = i + length vars
@@ -620,8 +626,8 @@ transit (Res pf
               ss = runMatch newHead goal'
           in case ss of
                [] ->
-                 let m' = matchError newHead goal' v f pf 
-                 in [(Res pf
+                 let m' = matchError fun newHead goal' v f pf exp
+                 in [(Res fun pf
                        ((Phi pos
                           (Just goal)
                           (Just exp) gamma lvars):phi)
@@ -669,18 +675,18 @@ transit (Res pf
                           phi' = applyPhi sub phi
                       in case phi' of
                            Right p ->
-                             return $ Res pf'' (highlow'++p) Nothing j
+                             return $ Res fun pf'' (highlow'++p) Nothing j
                            Left m' ->
                              let mess = text "globally," <+>
-                                        scopeError newHead goal' f v sub lvars pf
+                                        scopeError fun newHead goal' f v sub lvars pf exp
                                  m1 = m' $$ nest 2 mess 
-                             in [Res pf
+                             in [Res fun pf
                                   ((Phi pos
                                      (Just goal)
                                      (Just exp) gamma lvars):phi)
                                   (Just m1) i]
-                      else let mess = scopeError newHead goal' f v sub lvars pf 
-                           in [Res pf
+                      else let mess = scopeError fun newHead goal' f v sub lvars pf exp
+                           in [Res fun pf
                                 ((Phi pos
                                    (Just goal)
                                    (Just exp) gamma lvars):phi)
@@ -695,17 +701,17 @@ ersm init = let s = concat $ map transit init
                 (fails, pending) = partition failure s
                 flag = length fails == length s
             in if flag then
-                 let rs = map (\(Res _ _ (Just m) _) -> m) fails in
+                 let rs = map (\(Res _ _ _ (Just m) _) -> m) fails in
                    Left $ sep (map (\ (d, i) -> text "Wrong situation" <+> int i $$ nest 2 d)
                                 $ zip rs [1..])
                else case [p | p <- pending, success p ] of
                       [] -> ersm s
                       -- a -> Right $ map mixedTerm a
-                      (Res pf phi _ _):_ -> Right (pf, genVars phi)
+                      (Res _ pf phi _ _):_ -> Right (pf, genVars phi)
                              
-  where failure (Res _ _ (Just _) _) = True
+  where failure (Res _ _ _ (Just _) _) = True
         failure _ = False
-        success (Res pf phi Nothing i) =
+        success (Res _ pf phi Nothing i) =
           and $ map (\p -> currentGoal p == Nothing && currentProg p == Nothing) phi 
         success _ = False
         genVars phi = concat $ map (\(Phi _ _ _ _ lvars) -> genVars' lvars) phi

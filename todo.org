@@ -3,6 +3,6 @@
 ** DONE Support proof checking
 ** DONE Support type synonyms 
 ** DONE Aaron's Church merge sort
-** TODO Better type checking error message
+** DONE Better type checking error message
 ** TODO Support infix notations, make Bird's program more readable.
 

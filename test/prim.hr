@@ -1,5 +1,6 @@
 module Primitive where
 data F :: * -> * where
+data E :: * -> * -> * where
 data Emp :: * where
 primitive l :: forall x . F x -> F x
 primitive l'' :: (forall x . F x) -> forall x . F x
@@ -13,8 +14,27 @@ l' :: Emp
 l' = what (fix l'')
 -- l' = let y :: forall x . F x
 --          y = fix l
---      in what y
+--      in what 
+primitive f :: forall x a . E a x -> forall x . (E a x -> E a x)
+primitive a :: E Emp Emp
 
+-- eta :: forall a x . (forall x . E a x -> E a x) -> E a x -> E a x
+test1 :: E Emp Emp
+test1 = let 
+            eta  = \ u a -> u a in
+        eta (f a) a
+
+primitive f1 :: forall x a . E a x -> forall x . (E a x)
+
+test2 :: E Emp Emp
+test2 = let -- e :: forall x . E Emp x
+            e = f1 a in e
+
+test3 :: forall x . F x
+test3 = fix l''
+
+-- test4 :: forall x . F x
+-- test4 = fix l
 
 -- u :: forall x . F x -> F x
 -- u = u

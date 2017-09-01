@@ -3,7 +3,7 @@ data F :: * -> *
 data Void :: *  
 l :: forall x . F x -> F x  
 l = undefined 
-type A = A
+
 what :: (forall x . F x) -> Void
 what = what
 
@@ -26,6 +26,14 @@ v :: forall x . F (F x)
 v = u
 
 type Nat = forall x . (x -> x) -> x -> x
+
+f :: forall x . F x -> forall x . F x
+f = f
+a :: F Void
+a = a
+
+test1 :: F Void
+test1 = f a 
 
 -- zero :: Nat 
 -- zero = \ s z -> z
