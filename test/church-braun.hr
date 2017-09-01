@@ -66,6 +66,9 @@ leaf = \ a l n -> l a
 node :: forall a . Braun a -> Braun a -> Braun a
 node left right = \ l n -> n (left l n) (right l n)
 
+caseBraun :: forall a x . Braun a -> (a -> x) -> (x -> x -> x) -> x
+caseBraun br l n = br l n
+
 braunInsert :: forall a . a -> Braun a -> Braun a
 braunInsert a b =
   snd (b (\ aa -> pair (leaf aa)
@@ -102,4 +105,13 @@ mergeSorth f t = t (\ a -> cons a nil) (\ l r -> merge f l r)
 --                     tl = tail l
 --                 in mergeSorth f (toBraun h tl)
                 
+singleton :: forall a . a -> List a
+singleton a =  \ n c -> c a n
+
                        
+mergeSort :: forall a . (a -> a -> Bool) -> List a -> List a
+mergeSort cmp la =
+  caseMaybe (head la) (\ a -> caseBraun (toBraun a (tail la))
+                                 singleton
+                                 (\ la' lb -> merge cmp la' lb))
+                      nil
