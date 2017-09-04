@@ -33,8 +33,8 @@ test2 = let e :: forall x . E Emp x
 test3 :: forall x . F x
 test3 = fix l''
 
-test4 :: forall x . F x
-test4 = fix l
+-- test4 :: forall x . F x
+-- test4 = fix l
 
 -- u :: forall x . F x -> F x
 -- u = u
@@ -44,3 +44,17 @@ u = u
 
 v :: forall x . F (F x) 
 v = u
+
+data N :: * where
+
+data S :: * -> * where
+
+data Vec :: * -> * -> * where
+  VNil :: forall a . Vec a N
+  VCons :: forall a n . a -> Vec a n -> Vec a (S n)
+
+primitive undefined :: forall a . a
+shead :: forall a n . Vec a (S n) -> a
+shead (VCons x xs) = x
+
+
