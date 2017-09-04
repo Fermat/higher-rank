@@ -27,14 +27,14 @@ test1 = let
 primitive f1 :: forall x a . E a x -> forall x . (E a x)
 
 test2 :: E Emp Emp
-test2 = let -- e :: forall x . E Emp x
+test2 = let e :: forall x . E Emp x
             e = f1 a in e
 
 test3 :: forall x . F x
 test3 = fix l''
 
--- test4 :: forall x . F x
--- test4 = fix l
+test4 :: forall x . F x
+test4 = fix l
 
 -- u :: forall x . F x -> F x
 -- u = u
