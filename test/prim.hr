@@ -57,4 +57,21 @@ primitive undefined :: forall a . a
 shead :: forall a n . Vec a (S n) -> a
 shead (VCons x xs) = x
 
+data G :: * -> * -> * where
+data Bot :: * where
 
+g :: forall y . y -> Bot
+g = undefined
+
+a1 :: Bot
+a1 = a1
+
+k1 :: forall q . (forall x y . q -> (x -> y)) -> Bot
+k1 = k1
+
+k2 :: forall x y . (x -> y) -> (x -> y)
+k2 = undefined
+
+test5 :: Bot
+test5 = k1 k2
+              
