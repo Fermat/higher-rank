@@ -115,16 +115,18 @@ apply s (TApp f1 f2) = TApp (apply s f1) (apply s f2)
 apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply (minus s [x]) f2)
 apply s (Abs x f2) = Abs x (apply (minus s [x]) f2)
-apply s (Lambda (Ann (Var x) t) f2) =
-  Lambda (Ann (Var x) (apply (minus s [x]) t)) (apply (minus s [x]) f2)
+apply s (Lambda (Ann p t) f2) =
+  Lambda (Ann p (apply s t)) (apply s f2)
+-- type level lambda  
 apply s (Lambda (Var x) f2) =
   Lambda (Var x) (apply (minus s [x]) f2)
-apply s (Lambda x f2) = Lambda x (apply s f2)
+  
+-- apply s (Lambda x f2) = Lambda x (apply (minus s $ freeVars x) f2)
 apply s Star = Star
 apply s (Case e cons) = Case (apply s e) cons'
-  where cons' = map (\(p,exp) -> (apply s p, apply s exp)) cons
+  where cons' = map (\(p,exp) -> (p, apply s exp)) cons
 apply s (Let defs e) = Let def' (apply s e)
-  where def' = map (\(p, exp) -> (apply s p, apply s exp)) defs
+  where def' = map (\(Ann p t, exp) -> (Ann p (apply s t), apply s exp)) defs
 apply s (Ann x e) = Ann (apply s x) (apply s e)  
 -- apply s e = error $ show e ++ "from apply"
 
@@ -197,6 +199,7 @@ normTy (Imply t t') g = Imply (normTy t g) (normTy t' g)
 normTy (Forall x t) g = Forall x (normTy t g)
 
 type GVar a = State Int a
+
 runSubst :: Exp -> Exp -> Exp -> Exp
 runSubst t x t1 = fst $ runState (subst t x t1) 0
   
@@ -218,8 +221,8 @@ subst s (Var x) (App f1 f2) = do
 
 
 subst s (Var x) (Forall a f) =
-  if x == a || not (x `elem` freeVar f) then return $ Forall a f
-  else if not (a `elem` freeVar s)
+  if x == a || not (x `elem` freeVars f) then return $ Forall a f
+  else if not (a `elem` freeVars s)
        then do
          c <- subst s (Var x) f
          return $ Forall a c
@@ -230,8 +233,8 @@ subst s (Var x) (Forall a f) =
          subst s (Var x) (Forall (a ++ show n) c1)
 
 subst s (Var x) (Lambda (Var a) f) =
-  if x == a || not (x `elem` freeVar f) then return $ Lambda (Var a) f
-  else if not (a `elem` freeVar s)
+  if x == a || not (x `elem` freeVars f) then return $ Lambda (Var a) f
+  else if not (a `elem` freeVars s)
        then do
          c <- subst s (Var x) f
          return $ Lambda (Var a) c

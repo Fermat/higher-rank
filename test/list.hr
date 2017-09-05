@@ -18,7 +18,11 @@ data Pair :: * -> * -> * where
 data Maybe :: * -> * where
   Nothing :: forall a . Maybe a
   Just :: forall a . a -> Maybe a
-  
+
+test :: List (forall a . List a)
+test = Nil
+
+
 map :: forall a b . (a -> b) -> List a -> List b
 map f Nil = Nil
 map f (Cons x xs) = Cons (f x) (map f xs)

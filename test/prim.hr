@@ -58,20 +58,36 @@ shead :: forall a n . Vec a (S n) -> a
 shead (VCons x xs) = x
 
 data G :: * -> * -> * where
+
 data Bot :: * where
 
-g :: forall y . y -> Bot
-g = undefined
+id :: forall a . a -> a
+id x = x
 
-a1 :: Bot
-a1 = a1
-
-k1 :: forall q . (forall x y . q -> (x -> y)) -> Bot
+k1 :: forall p . p Bot -> p N
 k1 = k1
 
-k2 :: forall x y . (x -> y) -> (x -> y)
-k2 = undefined
+a1 :: Bot -> N
+a1 = k1
 
-test5 :: Bot
-test5 = k1 k2
+a2 :: F Bot -> F N
+a2 = k1
+
+
+-- k1 :: forall q . (forall x y . q -> (x -> y)) -> Bot
+-- k1 = k1
+
+-- k2 :: forall x y . (x -> y) -> (x -> y)
+-- k2 = undefined
+
+-- k1 :: forall q . (forall x . q -> x) -> q -> Bot
+-- k1 = k1
+
+-- k2 :: forall x . (x -> x) 
+-- k2 = undefined
+
+
+
+-- test5 :: forall z . z -> Bot
+-- test5 a = k1 k2 a
               

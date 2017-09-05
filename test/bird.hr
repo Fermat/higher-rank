@@ -56,7 +56,7 @@ gfoldT :: forall m n b . (forall a. m a -> n a) -> (forall a. n a -> n a -> n a)
 	    	    Term (m b) -> n b
 gfoldT v a l k (Var x) = v x
 
-gfoldT v a l k (App p1 p2) = a (gfoldT v a l k p1) undefined -- (gfoldT v a l k p2) 
+gfoldT v a l k (App p1 p2) = a (gfoldT v a l k p1) (gfoldT v a l k p2) 
 
 gfoldT v a l k (Lam t) = l (gfoldT v a l k ((mapT k) t))
 
