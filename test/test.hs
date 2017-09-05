@@ -35,6 +35,8 @@ a = a
 test1 :: F Void
 test1 = f a 
 
+omegaHalf :: (forall a . a) -> forall a . a
+omegaHalf x = x x x x 
 -- zero :: Nat 
 -- zero = \ s z -> z
 

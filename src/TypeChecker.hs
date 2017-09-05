@@ -469,7 +469,7 @@ transit (Res fun pf
       defsEnv = leftEnv ++ rightEnv
       thetas = concat $ map (\ (a,b,c,d) -> a) tps
       newEnv = 
-        [(Phi (pos++[1]) (Just goal) (Just e) (thetas ++gamma) lvars')] ++ defsEnv
+        defsEnv ++ [(Phi (pos++[1]) (Just goal) (Just e) (thetas ++gamma) lvars')]
       newLet = Let (map (\ (a,b,c,d) -> ((Ann b b), b)) tps) goal 
       pf' = replace pf pos newLet
   in [(Res fun pf' (newEnv++phi) Nothing j')]

@@ -18,11 +18,12 @@ l' = what (fix l'')
 primitive f :: forall x a . E a x -> forall x . (E a x -> E a x)
 primitive a :: E Emp Emp
 
--- eta :: forall a x . (forall x . E a x -> E a x) -> E a x -> E a x
+eta :: forall a x . (forall x . E a x -> E a x) -> E a x -> E a x
+eta u a = u a
+
 test1 :: E Emp Emp
-test1 = let 
-            eta  = \ u a -> u a in
-        eta (f a) a
+test1 = eta (f a) a
+        
 
 primitive f1 :: forall x a . E a x -> forall x . (E a x)
 
