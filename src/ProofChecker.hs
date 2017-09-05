@@ -107,7 +107,7 @@ proofCheck (App e1 e2) =
 proofCheck (Abs x t) = 
   do n<- get
      modify (+1)
-     lift $ lift (modify (\e -> (x, Var $ "kf"++show n ++ "'"): e))
+     lift $ lift (modify (\e -> (x, Var $ "kvar"++show n ++ "#"): e))
      f <- (proofCheck t)
      e <- ask
      if isFree x e

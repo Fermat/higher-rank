@@ -125,7 +125,7 @@ match e1 e2 = return [] -- error $ show (disp e1 <+> disp e2) --
 genProj :: Int -> [Exp]
 genProj l =
   if l == 0 then []
-  else let vars = map (\ y -> "x"++ show y ++ "'") $ take l [1..]
+  else let vars = map (\ y -> "x"++ show y ++ "#") $ take l [1..]
            ts = map (\ z -> foldr (\ x y -> Lambda (Var x) y) (Var z) vars) vars
        in ts
 
@@ -136,8 +136,8 @@ genImitation head arity arity' =
        l = take arity' [n..]
        lb = take arity [1..]
        n' = n + arity'
-       fvars = map (\ x -> "h" ++ show x ++ "'") l
-       bvars = map (\ x -> "m" ++ show x ++ "'") lb
+       fvars = map (\ x -> "h" ++ show x ++ "#") l
+       bvars = map (\ x -> "m" ++ show x ++ "#") lb
        bvars' = map Var bvars
        args = map (\ c -> (foldl' (\ z x -> App z x) (Var c) bvars')) fvars
        body = foldl' (\ z x -> App z x) head args

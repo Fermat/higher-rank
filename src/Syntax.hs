@@ -229,8 +229,8 @@ subst s (Var x) (Forall a f) =
        else do
          n <- get
          modify (+1)
-         c1 <- subst (Var (a++ show n++"'")) (Var a) f
-         subst s (Var x) (Forall (a ++ show n) c1)
+         c1 <- subst (Var (a++ show n++"#")) (Var a) f
+         subst s (Var x) (Forall (a ++ show n ++"#") c1)
 
 subst s (Var x) (Lambda (Var a) f) =
   if x == a || not (x `elem` freeVars f) then return $ Lambda (Var a) f
@@ -241,8 +241,8 @@ subst s (Var x) (Lambda (Var a) f) =
        else do
          n <- get
          modify (+1)
-         c1 <- subst (Var (a++ show n++ "'")) (Var a) f
-         subst s (Var x) (Lambda (Var $ a ++ show n++"'") c1)         
+         c1 <- subst (Var (a++ show n++ "#")) (Var a) f
+         subst s (Var x) (Lambda (Var $ a ++ show n++"#") c1)         
 
 
 

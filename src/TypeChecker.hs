@@ -116,7 +116,7 @@ patternVars p i =
   let fvs = freeVars p
       j = (i+(length fvs))-1
       ns = [i..j]
-      vars = map (\ n -> Var $ "y"++show n++"'") ns
+      vars = map (\ n -> Var $ "y"++show n++"#") ns
   in (zip fvs vars, j+1)
     
 
@@ -156,7 +156,7 @@ withVars ((Just t, (Var x), e):xs) i =
   in ((t, (Var x), e):ps, j)
 withVars ((Nothing, p, e):xs) i =
   let (ps, j) = withVars xs (i+1)
-  in ((Var $ "y"++show i++"'", p, e):ps, j)
+  in ((Var $ "y"++show i++"#", p, e):ps, j)
 withVars [] i = ([], i)
 
 
@@ -366,7 +366,7 @@ transit (Res fun pf
           Nothing i) =
   let (vars, imp) = getVars goal
       lv = length vars
-      absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
+      absNames = zipWith (\ x y -> x ++ show y ++ "#") vars [i..]
       absNames' = map Const absNames
       absVars = zip absNames' [getValue lvars ..]
       sub = zip vars absNames'
@@ -425,7 +425,7 @@ transit (Res fun pf
           Nothing i) =
   let pats = map fst alts
       brExps = map snd alts
-      y = "y"++show i++"'"
+      y = "y"++show i++"#"
       len = length alts
       n = getValue lvars
       (thetas, j) = makePatEnv pats (i+1)
@@ -522,7 +522,7 @@ transit (Res fun pf
         Just f | otherwise ->
           let (vars, imp) = getVars goal
               lv = length vars
-              absNames = zipWith (\ x y -> x ++ show y ++ "'") vars [i..]
+              absNames = zipWith (\ x y -> x ++ show y ++ "#") vars [i..]
               absNames' = map Const absNames
               absVars = zip absNames' [getValue lvars ..]
               sub = zip vars absNames'
@@ -535,7 +535,7 @@ transit (Res fun pf
               goal1 = imp'
               lvars1 = lvars++absVars
               (vars2, imp2) = getVars f
-              fresh = map (\ (v, j) -> v ++ show j ++ "'") $ zip vars2 [i1..]
+              fresh = map (\ (v, j) -> v ++ show j ++ "#") $ zip vars2 [i1..]
               fresh' = map Var fresh
               renaming = zip vars2 fresh'
               imp2' = apply (Subst renaming) imp2
@@ -613,14 +613,14 @@ transit (Res fun pf
         Just f ->
           let (vars, head, body) = separate f
               i' = i + length vars
-              fresh = map (\ (v, j) -> v ++ show j ++ "'") $ zip vars [i..]
+              fresh = map (\ (v, j) -> v ++ show j ++ "#") $ zip vars [i..]
               renaming = zip vars (map Var fresh)
               body'' = map (apply (Subst renaming)) body
               head'' = apply (Subst renaming) head
               n = length xs
               l = length body
               j = if l <= n then i' + (n-l) else i'
-              glVars = map (\ i -> Var $ "y"++show i++"'") [i'..j-1]
+              glVars = map (\ i -> Var $ "y"++show i++"#") [i'..j-1]
               goal' = reImp glVars goal
               newHead = if n < l then reImp (drop n body'') head'' else head''
               ss = runMatch newHead goal'
