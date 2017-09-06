@@ -40,7 +40,7 @@ makeLam pats e = foldr (\ p e' -> Lambda p e') e pats
 
 process fv (Var x) =
   if x `elem` fv then
-    (Const "Void")
+    (Const "Void#")
   else (Var x)
 process fv (Const x) =
   if isUpper $ head x then Const x

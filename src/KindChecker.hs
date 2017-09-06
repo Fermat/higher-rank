@@ -32,7 +32,7 @@ inferKind (Const x) =
        Just k -> return k
        Nothing ->
          -- Build-in type Void inhabited by nothing
-         if x == "Void" then return Star
+         if x == "Void#" then return Star
          else 
            throwError $
            text "Kinding error: " <+>
