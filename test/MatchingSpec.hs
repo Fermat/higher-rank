@@ -63,12 +63,17 @@ exp17 = App (Var "f") (App (Var "g") (Const "String"))
 exp19 = Const "String"
 exp20 = (App (Var "g") (Const "String"))
 exp18 =  (Imply (Const "String") (Imply (Const "Int") (Const "String")))
-test2 = map disp $ runMatch' (exp17) exp18
-test3 = map disp $ runMatch'' (exp17) exp18
+-- test2 = map disp $ runMatch' (exp17) exp18
+-- test3 = map disp $ runMatch'' (exp17) exp18
 -- minimal test case for matching.
-test4 = map disp $ runMatch' (exp17) (Imply (Const "String") (Const "String"))
-test5 = map disp $ runMatch'' (exp17) (Imply (Const "String") (Const "String"))
-test6 = map disp $ runMatch'' (App (Var "p") (App (Const "F") (Var "x"))) (App (Const "F") (Var "y"))
+-- test4 = map disp $ runMatch' (exp17) (Imply (Const "String") (Const "String"))
+-- test5 = map disp $ runMatch'' (exp17) (Imply (Const "String") (Const "String"))
+-- test6 = map disp $ runMatch'' (App (Var "p") (App (Const "F") (Var "x"))) (App (Const "F") (Var "y"))
 
-test7 = map disp $ runMatch' (App (Var "p") (App (Const "F") (Var "x"))) (App (Const "F") (Var "y"))
+-- test7 = map disp $ runMatch' (App (Var "p") (App (Const "F") (Var "x"))) (App (Const "F") (Var "y"))
+
+-- exp21 =  (App (Const "C") (App (Var "x") (Const "Nil")))
+exp22 =  (App (Var "x") (App (Const "C") (Const "Nil")))
+exp23 =  (App (Var "y") (App (Const "C") (Const "Nil")))
+test7 = map disp $ runMatch exp22 exp23
 

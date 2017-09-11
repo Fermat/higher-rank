@@ -1,4 +1,4 @@
-{-# LANGUAGE KindSignatures, RankNTypes, GADTs #-}
+{-# LANGUAGE KindSignatures, RankNTypes, GADTs, TypeFamilies #-}
 data F :: * -> *
 data Void :: *  
 l :: forall x . F x -> F x  
@@ -7,6 +7,9 @@ l = undefined
 what :: (forall x . F x) -> Void
 what = what
 
+
+
+  
 
 
 fix :: forall a . (a -> a) -> a
