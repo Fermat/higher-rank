@@ -117,7 +117,8 @@ match e1 e2 | (Var x):xs <- flatten e1, (Const y):ys <- flatten e2 =
                        oldsubst = [(x, imi)]: map (\ y -> [(x,y)]) prjs
                    bs <- mapM (\ ((a, b), u) ->
                                   do{s <- match a b;
-                                     return $ map (\ y -> extend y (Subst u)) s})
+                                     let s' = [Subst sub | Subst sub <- s, check x sub]
+                                     return $ map (\ y -> extend y (Subst u)) s'})
                          (zip imiAndProj oldsubst)
                    return $ concat bs
 
