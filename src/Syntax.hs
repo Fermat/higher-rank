@@ -148,6 +148,7 @@ norm Star = Star
 norm (Var a) = Var a
 norm (Const a) = Const a
 norm (Ann a t) = Ann (norm a) (norm t)
+norm (Lambda (Var x) (App t e)) | e == (Var x) = norm t
 norm (Lambda x t) = Lambda x (norm t)
 norm (Abs x t) = Abs x (norm t)
 norm (TApp t1 t2) = TApp (norm t1) (norm t2)
