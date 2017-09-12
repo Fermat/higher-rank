@@ -20,7 +20,8 @@ convert a@(Var _) = a
 convert a@(Const _) = a
 convert (App x y) = App (convert x) (convert y)
 convert (Forall x e) = Forall x (convert e)
-
+convert (Lambda x e) = Lambda x (convert e)
+convert e = error $ show e ++ "from convert"
 -- inversion of convert
 invert Star = Star
 invert a@(Var _) = a

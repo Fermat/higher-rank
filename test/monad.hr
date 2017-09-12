@@ -1,10 +1,36 @@
 module Monad where
+data List :: * -> * where
+ Nil :: forall a . List a 
+ Cons :: forall a . a -> List a -> List a
+
+id :: forall a . (a -> a)
+id x = x
 
 data Monad :: (* -> *) -> * where
   Mon :: forall m . (forall a . a -> m a) -> (forall a b . m a -> (a -> m b) -> m b) -> Monad m
 
-return :: forall m . Monad m -> (forall a . a -> m a)
+return :: forall m a . Monad m -> (a -> m a)
 return (Mon r b) = r
 
-bind :: forall m . Monad m -> (forall a b . m a -> (a -> m b) -> m b)
+bind :: forall m a b . Monad m -> (m a -> (a -> m b) -> m b)
 bind (Mon r b) = b
+
+join :: forall m a . Monad m -> m (m a) -> m a
+join m xss = bind m xss id
+
+primitive app :: forall a . List a -> List a -> List a
+
+listMonad :: Monad List
+listMonad  = Mon lunit lbind
+
+lunit :: forall a . a -> List a
+lunit x = Cons x Nil
+
+lbind :: forall a b . List a -> (a -> List b) -> List b
+lbind Nil f = Nil
+lbind (Cons x xs) f = app (f x) (lbind xs f)
+
+-- primitive f :: forall p a . p a
+
+-- test :: forall a . List a
+-- test = f
