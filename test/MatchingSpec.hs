@@ -74,9 +74,9 @@ exp18 =  (Imply (Const "String") (Imply (Const "Int") (Const "String")))
 
 -- exp21 =  (App (Const "C") (App (Var "x") (Const "Nil")))
 exp22 =  (App (Var "x") (App (Const "C") (Const "Nil")))
-exp23 =  (App (Var "y") (App (Const "C") (Const "Nil")))
-exp24 =  App (Var "x") (Var "a")
-exp25 =  (App (Const "C") (App (Var "u") (Const "Nil")))
+exp23 =  (App (Var "C") (App (Var "x") (Const "Nil")))
+exp24 =  (App (Const "C") (Var "a")) -- (Var "a") --(App (Const "D") (Var "a")) -- Imply (App (Const "C") (Var "a")) (App (Const "D") (Var "a"))
+exp25 =  (App (Var "m") (Const "E")) -- (Const "E") --(App (Const "D") (Const "E"))  -- Imply (App (Var "m") (Const "E")) (App (Const "D") (Const "E"))
 
 test7 = map disp $ runMatch exp24 exp25
 

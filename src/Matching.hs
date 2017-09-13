@@ -35,6 +35,11 @@ invert (App x y) = App (invert x) (invert y)
 -- unused substitutions and duplicatations
 
 runMatch e1 e2 =
+  let subs = runMatch1 e1 e2
+  in if  null subs then runMatch1 e2 e1
+     else subs
+
+runMatch1 e1 e2 =
   let subs = evalState (match (convert e1) (convert e2)) 0
       fvs = freeVar e1 `S.union` freeVar e2
       subs' = [ s'  | Subst s <- subs, agree s, 
@@ -42,7 +47,6 @@ runMatch e1 e2 =
       subs'' = nub $ map S.fromList subs'
       subs''' = map (Subst . S.toList) subs'' 
   in subs'''
-
 agree :: [(Name, Exp)] -> Bool
 agree s =
   let xs = [(x, e) | (x, e) <- s,
@@ -117,16 +121,16 @@ match e1 e2 | (Var x):xs <- flatten e1, (Const y):ys <- flatten e2 =
                        oldsubst = [(x, imi)]: map (\ y -> [(x,y)]) prjs
                    bs <- mapM (\ ((a, b), u) ->
                                   do{s <- match a b;
-                                     let s' = [Subst sub | Subst sub <- s, check x sub] in
-                                       return $ map (\ y -> extend y (Subst u)) s'})
+                                     -- let s' = [Subst sub | Subst sub <- s, check x sub] in
+                                     return $ map (\ y -> extend y (Subst u)) s})
                          (zip imiAndProj oldsubst)
                    return $ concat bs
 
 match e1 e2 = return [] -- error $ show (disp e1 <+> disp e2) --  
 
-check x sub =
-  let vars = concat $ map (freeVars . snd) sub
-  in not $ x `elem` vars
+-- check x sub =
+--   let vars = concat $ map (freeVars . snd) sub
+--   in not $ x `elem` vars
   
 genProj :: Int -> [Exp]
 genProj l =
