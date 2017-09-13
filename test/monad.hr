@@ -30,7 +30,7 @@ lbind :: forall a b . List a -> (a -> List b) -> List b
 lbind Nil f = Nil
 lbind (Cons x xs) f = app (f x) (lbind xs f)
 
--- primitive f :: forall p a . p a
+primitive f :: forall p m a b . m p -> p a -> p b
 
--- test :: forall a . List a
--- test = f
+test :: forall a b . Monad List -> List a -> List b
+test = f
