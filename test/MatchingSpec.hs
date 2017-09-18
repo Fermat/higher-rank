@@ -81,3 +81,7 @@ exp25 =  (Forall "a" (Forall "c" (Var "c"))) -- (Const "E") --(App (Const "D") (
 test7 = map disp $ runMatch exp25 exp24
 test8 = map disp $ runMatch exp22 exp23
 
+exp26 = App (App (Const "A") (App (Var "f") (Var "x"))) (App (Var "g") (Var "y"))
+exp27 = App (App (Const "A") (Const "True")) (Const "True")
+
+test9 = map disp $ runMatch exp26 exp27
