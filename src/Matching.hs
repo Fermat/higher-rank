@@ -104,7 +104,7 @@ match e1 e2 | (Var x):xs <- flatten e1,
                 [Subst []] (zip xs ys)
 
 -- braiding
-match e1 e2 | (Const x):xs <- flatten e1, (Var z):ys <- flatten e2  = match e2 e1
+-- match e1 e2 | (Const x):xs <- flatten e1, (Var z):ys <- flatten e2  = match e2 e1
 
 -- rigid-flexible, 
 match e1 e2 | (Var x):xs <- flatten e1, (Const y):ys <- flatten e2 =

@@ -1,0 +1,74 @@
+module prim where
+
+data List :: * -> * where
+ Nil :: forall a . List a 
+ Cons :: forall a . a -> List a -> List a
+
+data Pair :: * -> * -> * where
+  Pair :: forall a b . a -> b -> Pair a b
+
+data Bool :: * where
+  True :: Bool
+  False :: Bool
+
+data Nat :: * where
+  Z :: Nat
+  S :: Nat -> Nat
+
+primitive one :: Nat
+primitive add :: Nat -> Nat -> Nat
+app :: forall a . List a -> List a -> List a
+app Nil x = x
+app (Cons x xs) l = Cons x (app xs l)
+
+fix :: forall a . (a -> a) -> a
+fix f = f (fix f)
+
+app' :: forall a . List a -> List a -> List a
+app'  = fix (\ r l1 l2 -> case l1 of
+                           Nil -> l2
+			   Cons x xs -> Cons x (r xs l2))
+
+reverse :: forall a . List a -> List a
+reverse Nil = Nil
+reverse (Cons a as) = app (reverse as) (Cons a Nil)
+
+-- foo :: Pair (List Bool) (List Nat)
+-- foo = let f = \ x -> Pair (x (Cons True Nil)) (x (Cons Z Nil))
+--       in f reverse
+
+omegaHalf :: (forall a . a) -> forall a . a
+omegaHalf x = x x
+
+primitive foo1 :: (forall a . a -> a) -> Nat
+primitive bar :: forall b . Bool -> b -> b
+
+myBar :: (forall b . Bool -> b -> b) -> (Bool -> forall b . (b -> b))
+myBar b x y = b x y
+
+myBarRev :: (Bool -> forall b . (b -> b)) -> (forall b . Bool -> b -> b)
+myBarRev b x y = let b' = b x in b' y
+
+bar' :: Bool -> (forall b . b -> b)
+bar' x y = bar x y
+
+bar'' :: forall b . Bool -> b -> b
+bar'' x y = let b = bar' x in b y
+
+test1 :: Bool -> Nat
+test1 x = foo1 (\ z -> bar x z)
+
+test2 :: Bool -> Nat
+test2 = compose foo1 (\ x y -> bar x y)
+
+compose :: forall p q r . (q -> r) -> (p -> q) -> p -> r
+compose f g x = f (g x)
+
+data Nested :: * -> * where
+  NN :: forall a . Nested a
+  NCons :: forall a . a -> Nested (List a) -> Nested a
+
+len :: forall a . Nested a -> Nat
+len = fix (\ r n -> case n of
+                      NN -> Z
+		      NCons x xs -> add one (r xs))

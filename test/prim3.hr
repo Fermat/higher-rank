@@ -1,0 +1,19 @@
+module prim3 where
+
+
+f :: forall a . a -> forall b . (b -> b)
+f x y = y
+
+data Bool :: * where
+  True :: Bool
+  False :: Bool
+
+data Nat :: * where
+  Z :: Nat
+  S :: Nat -> Nat
+
+g :: Bool
+g = g' True
+
+g' :: forall b . b -> b
+g' = f Z
