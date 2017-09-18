@@ -35,102 +35,72 @@ invert (App x y) = App (invert x) (invert y)
 -- unused substitutions and duplicatations
 
 runMatch e1 e2 =
-  let subs = runMatch1 e1 e2
-  in if  null subs then runMatch1 e2 e1
-     else subs
-
-runMatch1 e1 e2 =
-  let subs = evalState (match (convert e1) (convert e2)) 0
+  let states = match ([(convert e1, convert e2)], [], Subst [], 0)
       fvs = freeVar e1 `S.union` freeVar e2
-      subs' = [ s'  | Subst s <- subs, agree s, 
-                      let s' = [(x, invert e) | (x, e) <- s, x `S.member` fvs]]
+      subs = [sub | ([], vars, sub, _) <- states, apart sub, agree sub, apartEV sub vars]
+      subs' = [ s'  | Subst s <- subs, 
+                let s' = [(x, invert e) | (x, e) <- s, x `S.member` fvs]]
       subs'' = nub $ map S.fromList subs'
       subs''' = map (Subst . S.toList) subs'' 
   in subs'''
-agree :: [(Name, Exp)] -> Bool
-agree s =
+
+apartEV :: Subst -> [Name] -> Bool
+apartEV (Subst sub) vars =
+  let codom = concat $ map (eigenVar . snd) sub in
+    null $ codom `intersect` vars
+apart :: Subst -> Bool
+apart (Subst sub) = let dom = map fst sub
+                        codom = concat $ map (freeVars . snd) sub in 
+                      null $ dom `intersect` codom
+
+agree :: Subst -> Bool
+agree (Subst s) =
   let xs = [(x, e) | (x, e) <- s,
                      let a = filter (\ (y, e') -> y == x) s,
                      all (\ (x', e'') -> e `alphaEq` e'') a]
   in length s == length xs 
   
 
--- match two types expression or two kind expression
+type MatchState = ([(Exp, Exp)], [Name], Subst, Int)
 
-match :: Exp -> Exp -> State Int [Subst]
--- match e1 e2 | trace ("\n matching " ++ show (disp e1) ++"\n" ++ show (disp e2)) False = undefined
-match Star Star = return [Subst []]
-match (Var x) e | (Var x) == e = return $ [Subst []]
-                | x `elem` freeVars e = return []
-                | otherwise = return $ [Subst [(x, e)]]
+match :: MatchState -> [MatchState]
+match ((e1, e2):xs, vars, sub, i) | e1 == e2 = match (xs, vars, sub, i)
+match ((Var a, e):xs, vars, sub, i)
+  | a `elem` freeVars e = []
+  | otherwise =
+    let newSub = Subst [(a, e)] in
+      match (map (\ (a1, a2) -> (apply newSub a1, apply newSub a2)) xs,
+              vars, extend newSub sub, i)
+match ((e, Var a):xs, vars, sub, i) = match ((Var a, e):xs, vars, sub, i)
+match ((Forall x e, (Forall y e')):xs, vars, sub, i)
+  = let fresh = "u"++ show i ++ "#"
+        e1 = apply (Subst [(x, Const fresh)]) e
+        e2 = apply (Subst [(y, Const fresh)]) e' in
+      match ((e1, e2):xs, fresh:vars, sub, i+1)
+match ((e1, e2):res, vars, sub, i)
+  | (Const x):xs <- flatten e1,
+    (Const y):ys <- flatten e2,
+    x == y, length xs == length ys = match (zip xs ys ++ res, vars, sub, i)
 
-match (Forall x e) (Forall y e') =
-  let e1 = apply (Subst [(x, Const x)]) e
-      e2 = apply (Subst [(y, Const x)]) e' in
-    do s <- match e1 e2
-       let res = [ ss | ss@(Subst sub) <- s,
-                   and $ map ((not . elem x) . eigenVar . snd) sub ]
-       return res
-                                          
-match e (Var x) | (Var x) == e = return [Subst []]
-                | x `elem` freeVars e = return []
-                | otherwise = return [Subst [(x, e)]]
-
--- rigid-rigid first-order simp
-match e1 e2 | (Const x):xs <- flatten e1,
-              (Const y):ys <- flatten e2,
-              x == y, length xs == length ys =
-                foldM (\ x (a, b) ->
-                          do{s' <- mapM (\ sub ->
-                                            match (normalize $ apply sub a)
-                                            (normalize $ apply sub b))
-                                   x;
-                             return $
-                              concat [map (\ y -> extend y sub') subs
-                                     | (sub', subs) <- zip x s']})
-                [Subst []] (zip xs ys)
-
--- first-order simp
-match e1 e2 | (Var x):xs <- flatten e1,
-              (Var y):ys <- flatten e2,
-              x == y,
-              length xs == length ys =
-                foldM (\ x (a, b) ->
-                          do{s' <- mapM (\ sub -> match (normalize $ apply sub a)
-                                                  (normalize $ apply sub b))
-                                   x;
-                             return $ concat [map (\ y -> extend y sub') subs
-                                             | (sub', subs) <- zip x s']})
-                [Subst []] (zip xs ys)
-
--- braiding
--- match e1 e2 | (Const x):xs <- flatten e1, (Var z):ys <- flatten e2  = match e2 e1
-
--- rigid-flexible, 
-match e1 e2 | (Var x):xs <- flatten e1, (Const y):ys <- flatten e2 =
-                do let argL = length xs
-                       argL' = length ys
-                       prjs = genProj argL
-                   imi <- genImitation (Const y) argL argL'
-                   let renew = normalize $ apply (Subst [(x, imi)]) e1
-                       pis = map (\ (a, b) ->
-                                  (normalize $ apply (Subst [(x, a)]) b,
-                                    e2)) -- normalize $ apply (Subst [(x, a)]) 
-                             (zip prjs xs)
-                       imiAndProj = (renew, e2) : pis -- normalize $ apply (Subst [(x, imi)]) e2
-                       oldsubst = [(x, imi)]: map (\ y -> [(x,y)]) prjs
-                   bs <- mapM (\ ((a, b), u) ->
-                                  do{s <- match a b;
-                                     -- let s' = [Subst sub | Subst sub <- s, check x sub] in
-                                     return $ map (\ y -> extend y (Subst u)) s})
-                         (zip imiAndProj oldsubst)
-                   return $ concat bs
-
-match e1 e2 = return [] -- error $ show (disp e1 <+> disp e2) --  
-
--- check x sub =
---   let vars = concat $ map (freeVars . snd) sub
---   in not $ x `elem` vars
+match ((e1, e2):res, vars, sub, i)
+  | (Const x):xs <- flatten e1,
+    (Var z):ys <- flatten e2 = match ((e2, e1):res, vars, sub, i)
+    
+match ((e1, e2):res, vars, sub, i)
+  | (Var x):xs <- flatten e1,
+    (Const y):ys <- flatten e2 =
+      let argL = length xs
+          argL' = length ys
+          prjs = genProj argL
+          (imi, j) = genImitation i (Const y) argL argL'
+          iminew = normalize $ apply (Subst [(x, imi)]) e1
+          newsubs = Subst [(x, imi)] : map (\ p -> Subst [(x, p)]) prjs
+          neweqs = (iminew, e2) : map (\ x -> (x, e2)) xs
+      in 
+        concat [match (eq:res, vars, extend sub' sub, j) | (sub', eq) <- zip newsubs neweqs]
+           
+match ((e1, e2):res, vars, sub, i) = []
+match ([], vars, sub, i) = [([], vars, sub, i)]
   
 genProj :: Int -> [Exp]
 genProj l =
@@ -139,20 +109,18 @@ genProj l =
            ts = map (\ z -> foldr (\ x y -> Lambda (Var x) y) (Var z) vars) vars
        in ts
 
-genImitation :: Exp -> Int -> Int -> State Int Exp
-genImitation head arity arity' = 
-  do n <- get
-     let
-       l = take arity' [n..]
-       lb = take arity [1..]
-       n' = n + arity'
-       fvars = map (\ x -> "h" ++ show x ++ "#") l
-       bvars = map (\ x -> "m" ++ show x ++ "#") lb
-       bvars' = map Var bvars
-       args = map (\ c -> (foldl' (\ z x -> App z x) (Var c) bvars')) fvars
-       body = foldl' (\ z x -> App z x) head args
-       res = foldr (\ x y -> Lambda (Var x) y) body bvars
-     put n'
-     return res
+genImitation :: Int -> Exp -> Int -> Int -> (Exp, Int)
+genImitation n head arity arity' = 
+  let l = take arity' [n..]
+      lb = take arity [1..]
+      n' = n + arity'
+      fvars = map (\ x -> "h" ++ show x ++ "#") l
+      bvars = map (\ x -> "m" ++ show x ++ "#") lb
+      bvars' = map Var bvars
+      args = map (\ c -> (foldl' (\ z x -> App z x) (Var c) bvars')) fvars
+      body = foldl' (\ z x -> App z x) head args
+      res = foldr (\ x y -> Lambda (Var x) y) body bvars in
+    (res, n')
+
                                         
   

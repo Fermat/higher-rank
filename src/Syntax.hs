@@ -48,7 +48,7 @@ freeVar (Imply b h) = freeVar b `S.union` freeVar h
 
 -- eigen variable of a type exp  
 eigenVar = S.toList . eigen
-
+eigen Star = S.empty
 eigen (Var x) = S.empty
 eigen (Const x) = if isLower (head x) then S.insert x S.empty else S.empty
 eigen (App f1 f2) = (eigen f1) `S.union` (eigen f2)

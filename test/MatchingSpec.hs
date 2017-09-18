@@ -13,7 +13,7 @@ spec = do
       runMatch exp1 exp2 `shouldBe` [Subst [("y", exp1)]]
       runMatch exp2 exp1 `shouldBe` [Subst [("y", exp1)]]
       runMatch (Var "x") exp1 `shouldBe` []
-      runMatch (Var "x") (Var "x") `shouldBe` [Subst [("x",Var "x")]]
+      runMatch (Var "x") (Var "x") `shouldBe` [Subst []]
       and [apply s exp3 == apply s exp4 | s <- sub1] `shouldBe` True
       and [apply s exp3 == apply s exp4 | s <- sub2] `shouldBe` True
       runMatch exp5 exp6 `shouldBe` [Subst []]
@@ -45,19 +45,19 @@ exp7 = Forall "y" (Imply (Var "z") (Var "z"))
 
 exp8 = App (App (Var "d") (Const "Z")) (Const "Z")
 exp9 = App (App (Const "D") (Const "Z")) (App (Const "S") (Const "Z"))
-sub3 = runMatch exp8 exp9
-sub3' = disp $ nub $ map (\ (Subst x) -> head x) sub3
+sub3 = map disp $ runMatch exp8 exp9
+--sub3' = disp $ nub $ map (\ (Subst x) -> head x) sub3
 
 exp10 = App (Const "S") (Const "Z")
 exp11 = App (Var "x") (Const "Z")
-sub4 = runMatch exp11 exp10
-sub5 = runMatch (Imply Star Star) (Imply Star (Var "x"))
+sub4 = map disp $ runMatch exp11 exp10
+sub5 = map disp $ runMatch (Imply Star Star) (Imply Star (Var "x"))
 exp12 = App (Const "S") (Var "a")
 exp13 = App (Const "S") (Const "Z")
 exp14 = App (App  (Var "x") (Lambda (Var "y") (Var "y"))) (Const "C")
 exp15 = Forall "z" $ App (Const "F") (App (Var "x") (Var "z"))
 exp16 = Forall "z" $ App (Var "x")  (App (Const "F") (Var "z"))
-test1 = runMatch exp14 (Const "C")
+test1 = map disp $ runMatch exp14 (Const "C")
 
 exp17 = App (Var "f") (App (Var "g") (Const "String"))
 exp19 = Const "String"
@@ -79,4 +79,5 @@ exp24 =  (Forall "a" (Forall "b" (Var "a"))) -- (App (Const "C") (Var "a")) -- (
 exp25 =  (Forall "a" (Forall "c" (Var "c"))) -- (Const "E") --(App (Const "D") (Const "E"))  -- Imply (App (Var "m") (Const "E")) (App (Const "D") (Const "E"))
 
 test7 = map disp $ runMatch exp25 exp24
+test8 = map disp $ runMatch exp22 exp23
 
