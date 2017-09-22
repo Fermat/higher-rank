@@ -90,8 +90,9 @@ id' = let x :: forall a . a -> a
           z = id
       in Pair (x True) (x Z)
       
--- id' :: Nat
--- id' = let x = \ y -> y in x Z
+id1 :: Nat
+id1 = let x = id
+          y = x Z in x Z
 
 -- skk :: forall a b c . (a -> b -> c) -> (a -> b) -> (a -> c)
 

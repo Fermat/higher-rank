@@ -72,11 +72,13 @@ match ((Var a, e):xs, vars, sub, i)
       match (map (\ (a1, a2) -> (apply newSub a1, apply newSub a2)) xs,
               vars, extend newSub sub, i)
 match ((e, Var a):xs, vars, sub, i) = match ((Var a, e):xs, vars, sub, i)
+
 match ((Forall x e, (Forall y e')):xs, vars, sub, i)
   = let fresh = "u"++ show i ++ "#"
         e1 = apply (Subst [(x, Const fresh)]) e
         e2 = apply (Subst [(y, Const fresh)]) e' in
       match ((e1, e2):xs, fresh:vars, sub, i+1)
+
 match ((e1, e2):res, vars, sub, i)
   | (Const x):xs <- flatten e1,
     (Const y):ys <- flatten e2,

@@ -463,11 +463,12 @@ transit (Res fun pf
       leftEnv = map (\(po, (env, t, p, e)) ->
                         (Phi po (Just t) (Just p) (env++gamma) lvars')) 
                 (zip posLeft tps)
+      thetas = concat $ map (\ (a,b,c,d) -> a) tps
       rightEnv = map (\(po, (env, t, p, e)) ->
-                         (Phi po (Just t) (Just e) (env++gamma) lvars'))
+                         (Phi po (Just t) (Just e) (thetas++gamma) lvars'))
                  (zip posRight tps)
       defsEnv = leftEnv ++ rightEnv
-      thetas = concat $ map (\ (a,b,c,d) -> a) tps
+      
       newEnv = 
         defsEnv ++ [(Phi (pos++[1]) (Just goal) (Just e) (thetas ++gamma) lvars')]
       newLet = Let (map (\ (a,b,c,d) -> ((Ann b b), b)) tps) goal 

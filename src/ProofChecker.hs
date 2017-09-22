@@ -177,7 +177,7 @@ proofCheck (Let defs e) =
 
         checkDefs env ((Ann _ t, e):ds) =
              do kindable t
-                t' <- proofCheck e
+                t' <- local (\ y -> env ++ y) $ proofCheck e
                 if t' `alphaEq` t then
                    checkDefs env ds
                   else lift $ lift $ lift $ Left $
