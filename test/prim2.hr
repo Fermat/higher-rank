@@ -43,6 +43,24 @@ omegaHalf x = x x
 primitive foo1 :: (forall a . a -> a) -> Nat
 primitive bar :: forall b . Bool -> b -> b
 
+ap :: forall a b . (a -> b) -> a -> b
+ap f a = f a
+
+id :: forall a . a -> a
+id x = x
+
+poly :: (forall v . v -> v) -> Pair Nat Bool
+poly f = Pair (f Z) (f True)
+
+test0 :: Pair Nat Bool
+test0 = ap poly id
+
+test1 :: Bool -> Nat
+test1 x = foo1 (\ y -> bar x y)
+
+test2 :: Bool -> Nat
+test2 = compose foo1 (\ x y -> bar x y)
+
 myBar :: (forall b . Bool -> b -> b) -> (Bool -> forall b . (b -> b))
 myBar b x y = b x y
 
@@ -55,11 +73,6 @@ bar' x y = bar x y
 bar'' :: forall b . Bool -> b -> b
 bar'' x y = let b = bar' x in b y
 
-test1 :: Bool -> Nat
-test1 x = foo1 (\ z -> bar x z)
-
-test2 :: Bool -> Nat
-test2 = compose foo1 (\ x y -> bar x y)
 
 compose :: forall p q r . (q -> r) -> (p -> q) -> p -> r
 compose f g x = f (g x)

@@ -1,0 +1,29 @@
+module hoas where
+
+data Term :: * where
+  App :: Term -> Term -> Term
+  Abs :: (Term -> Term) -> Term
+
+id :: Term
+id = Abs (\ x -> x)
+
+diverge :: Term
+diverge = App (Abs (\ x -> App x x)) (Abs (\ x -> App x x))
+
+selfApply :: Term -> Term
+selfApply x = case x of
+                App a b -> App a b
+		Abs f -> f (Abs f)
+
+
+bad :: Term
+bad = selfApply (Abs selfApply)
+data Unit :: * where
+data PTerm :: * -> * where
+  PVar :: forall a . a -> PTerm a
+  PApp :: forall a . PTerm a -> PTerm a -> PTerm a
+  PAbs :: forall a . (a -> PTerm a) -> PTerm a
+
+pid :: PTerm Unit
+pid = PAbs (\ x -> PVar x)
+
