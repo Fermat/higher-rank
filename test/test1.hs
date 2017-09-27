@@ -1,5 +1,5 @@
 -- import Test.QuickCheck
-{-#LANGUAGE RankNTypes#-}
+{-#LANGUAGE RankNTypes, KindSignatures, GADTs#-}
 
 g1 0 y | y >= 0 = y
 g1 x 0 | x >= 0 = x
@@ -29,11 +29,38 @@ zero = \ s z -> z
 succ' :: Nat -> Nat
 succ' n = \ s z -> s (n s z)
 
-add :: Nat -> Nat -> Nat
-add n m = n succ' m
+-- add :: Nat -> Nat -> Nat
+-- add n m = n succ' m
 
 
 f 0 x u = 1
 f y x u | y > 0 = u x (y-1)
 
 prop x y = g1 x y == g2 x y 
+
+data PTerm :: * -> * where
+  PVar :: forall a . a -> PTerm a
+  PApp :: forall a . PTerm a -> PTerm a -> PTerm a
+  PAbs :: forall a . (a -> PTerm a) -> PTerm a
+
+pid :: forall a . PTerm a
+pid = PAbs PVar
+
+
+numVars :: PTerm () -> Int
+numVars (PVar x) = 1
+numVars (PApp e1 e2) =  (numVars e1) + (numVars e2)
+numVars (PAbs e') = numVars (e' ())
+
+numVars' :: (forall a . PTerm a) -> Int
+numVars' e = numVars e
+
+type PTerm1 = forall a . a -> PTerm a
+
+subst :: forall a . PTerm (PTerm a) -> PTerm a
+subst (PVar e) = e
+subst (PApp e1 e2) = PApp (subst e1) (subst e2)
+subst (PAbs e) = PAbs (\ x -> subst (e (PVar x)))
+
+subst' :: PTerm1 -> (forall a . PTerm a) -> (forall a . PTerm a)
+subst' e1 e2 = subst (e1 e2)

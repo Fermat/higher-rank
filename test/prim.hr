@@ -35,7 +35,7 @@ test3 :: forall x . F x
 test3 = fix l''
 
 -- test4 :: forall x . F x
--- test4 = fix l
+-- test4 = let e = fix l in e
 
 -- u :: forall x . F x -> F x
 -- u = u

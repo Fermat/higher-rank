@@ -3,6 +3,10 @@ module List where
 data List :: * -> * where
  Nil :: forall a . List a 
  Cons :: forall a . a -> List a -> List a
+ Cons2 :: Bool -> forall a . List a
+ 
+ha :: forall a . List a
+ha = Cons2 True
 
 data Bool :: * where
  True :: Bool

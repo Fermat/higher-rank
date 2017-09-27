@@ -18,12 +18,77 @@ selfApply x = case x of
 
 bad :: Term
 bad = selfApply (Abs selfApply)
+
 data Unit :: * where
+ Unit :: Unit
+ 
 data PTerm :: * -> * where
   PVar :: forall a . a -> PTerm a
   PApp :: forall a . PTerm a -> PTerm a -> PTerm a
   PAbs :: forall a . (a -> PTerm a) -> PTerm a
 
-pid :: PTerm Unit
-pid = PAbs (\ x -> PVar x)
+pid :: forall a . Unit -> PTerm a
+pid u = PAbs PVar
+-- pid = let e = PAbs (\ x -> PVar x) in e
 
+-- test1 :: Nat
+-- test1 = numVars' (PAbs PVar)
+
+-- pid' :: (forall a . Unit -> PTerm a) -> Unit -> (forall b . PTerm b)
+-- pid' p u = p u
+
+data Nat :: * where
+  Z :: Nat
+  S :: Nat -> Nat
+
+primitive add :: Nat -> Nat -> Nat
+
+numVars :: PTerm Unit -> Nat
+numVars (PVar x) = S Z
+numVars (PApp e1 e2) = add (numVars e1) (numVars e2)
+numVars (PAbs e') = numVars (e' Unit)
+
+numVars' :: (forall a . PTerm a) -> Nat
+numVars' e = numVars e
+
+test2 :: Nat
+test2 = numVars (PAbs PVar)
+
+data Bool :: * where
+ True :: Bool
+ False :: Bool
+
+primitive and :: Bool -> Bool -> Bool
+
+canEta' :: PTerm Bool -> Bool
+canEta' (PVar b) = b
+canEta' (PApp e1 e2) = and (canEta' e1) (canEta' e2)
+canEta' (PAbs e) = canEta' (e True)
+
+canEta :: PTerm Bool -> Bool
+canEta (PAbs e) = case e False of
+                     PApp e1 (PVar False) -> canEta' e1
+                     y -> False
+canEta y = False
+
+test1 :: Bool
+test1 = canEta (PAbs PVar)
+
+-- Note that we can not type check a program that has the type (forall a . PTerm a),
+-- so we cannot use canEta1
+
+canEta1 :: (forall a . PTerm a) -> Bool
+canEta1 e = canEta e
+
+type PTerm1 :: * = forall a . a -> PTerm a
+
+subst :: forall a . PTerm (PTerm a) -> PTerm a
+subst (PVar e) = e
+subst (PApp e1 e2) = PApp (subst e1) (subst e2)
+subst (PAbs e) = PAbs (\ x -> subst (e (PVar x)))
+
+subst' :: forall a . PTerm1 -> (PTerm a) -> PTerm a
+subst' e1 e2 = subst (e1 e2)
+
+test3 :: PTerm Bool
+test3 = subst' (\ x -> PVar x) (PAbs PVar)
