@@ -362,7 +362,7 @@ matchError fun imp goal y f pf exp =
    nest 2 (disp pf))
 
 transit :: ResState -> [ResState]
-transit state | trace ("transit " ++show (state) ++"\n") False = undefined
+-- transit state | trace ("transit " ++show (state) ++"\n") False = undefined
 transit (Res fun pf
           ((Phi pos
              (Just goal@(Forall x y))
