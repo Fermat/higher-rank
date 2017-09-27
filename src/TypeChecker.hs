@@ -231,20 +231,24 @@ takeOnes n | n > 1 = (take (n-1) stream1):takeOnes (n-1)
 makeZeros 0 = []
 makeZeros n | n > 0 = make n stream0 : makeZeros (n-1)
 
+
 applyS :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)]
 -- applyS state g | trace ("applyS " ++show ("hi") ++"\n") False = undefined
 applyS sub l = applyS' sub l []
   where applyS' :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)] -> [(Exp, Int)]
         applyS' sub [] store = store           
         applyS' sub (((Const x), n):xs) store = ((Const x), n): applyS' sub xs store
-        applyS' sub (((Var x), n):xs) store =
+        applyS' sub a@(((Var x), n):xs) store =
           case lookup x sub of
             Nothing -> applyS' sub xs (((Var x), n):store)
             Just e ->
               let fvs = freeVars e
+                  vars = [ x | ((Var x), _) <- (a ++ store)]
+                  extra = [ y | y <- fvs, not $ y `elem` vars]
                   (store', n') = updateS fvs store n
                   (xs', n'') = updateS fvs xs n'
-              in applyS' sub xs' store'
+                  store'' = (map (\ x -> (Var x, n'')) extra) ++ store'
+              in applyS' sub xs' store''
         updateS fvs ((Const x, v):l) n =
           let (res, n') = updateS fvs l n
           in ((Const x, v):res, n')
@@ -358,7 +362,7 @@ matchError fun imp goal y f pf exp =
    nest 2 (disp pf))
 
 transit :: ResState -> [ResState]
--- transit state | trace ("transit " ++show (state) ++"\n") False = undefined
+transit state | trace ("transit " ++show (state) ++"\n") False = undefined
 transit (Res fun pf
           ((Phi pos
              (Just goal@(Forall x y))
@@ -488,7 +492,9 @@ transit (Res fun pf
                    <+> text "in the environment" 
           in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
         Just f | isVar f || isVar goal ->
-            let sub = if isVar f then [(getName f, goal)]
+            let sub =
+                  if f == goal then []
+                  else if isVar f then [(getName f, goal)]
                   else if isVar goal then [(getName goal, f)]
                   else error "internal error from transit" in
             if scopeCheck lvars sub then
