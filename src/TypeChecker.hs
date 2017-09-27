@@ -488,7 +488,9 @@ transit (Res fun pf
                    <+> text "in the environment" 
           in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
         Just f | isVar f || isVar goal ->
-            let sub = if isVar f then [(getName f, goal)]
+            let sub =
+                  if f == goal then []
+                  else if isVar f then [(getName f, goal)]
                   else if isVar goal then [(getName goal, f)]
                   else error "internal error from transit" in
             if scopeCheck lvars sub then
