@@ -98,7 +98,9 @@ inferKind (Imply f1 f2) =
        (a, b) -> throwError $ text "Kinding error:" $$
                  (text "unexpected kind"<+> disp a <+>
                    text "for" <+> disp f1)
-                                                  
+
+inferKind (Pos _ f) = inferKind f
+
 runKinding :: Exp -> KindDef -> Either Doc Exp
 runKinding t g = do (k, sub) <- runReaderT (runStateT (evalStateT (inferKind t) 0) []) g 
                     return k

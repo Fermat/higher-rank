@@ -14,6 +14,7 @@ import Debug.Trace
 
 -- convert a type expression that contains Imply to App (Const "->")
 convert :: Exp -> Exp
+-- convert (Pos _ e) = convert e
 convert (Imply x y) = App (App (Const "->") (convert x)) (convert y)
 convert Star = Star
 convert a@(Var _) = a
@@ -35,7 +36,7 @@ invert (App x y) = App (invert x) (invert y)
 -- unused substitutions and duplicatations
 
 runMatch e1 e2 =
-  let states = match ([(convert e1, convert e2)], [], Subst [], 0)
+  let states = match ([(convert $ erasePosType e1, convert $ erasePosType e2)], [], Subst [], 0)
       fvs = freeVar e1 `S.union` freeVar e2
       subs = [sub | ([], vars, sub, _) <- states, apart sub, agree sub, apartEV sub vars]
       subs' = [ s'  | Subst s <- subs, 

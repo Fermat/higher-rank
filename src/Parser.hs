@@ -21,7 +21,7 @@ import Data.List
 
 parseModule :: String -> String -> Either P.ParseError [Decl]
 parseModule srcName cnts = 
- runIndent $ runParserT decl () srcName cnts
+ runIndent $ runParserT decl initialParserState srcName cnts
 
 
 -- parseExp :: String -> Either P.ParseError Exp
@@ -30,7 +30,30 @@ parseModule srcName cnts =
 -- parseExps :: String -> Either P.ParseError [Exp]
 -- parseExps s = runIndent [] $ runParserT (many1 (try (parens term) <|> term)) () [] s
 
-type Parser a = IndentParser String () a
+type Parser a = IndentParser String ParserState a
+
+data ParserState =
+  ParserState {
+    progParser :: IndentParser String ParserState Exp,
+    typeParser :: IndentParser String ParserState Exp,
+    progOpTable :: IM.IntMap [Operator String ParserState (IndentT Identity) Exp],
+    typeOpTable :: IM.IntMap [Operator String ParserState (IndentT Identity) Exp]
+    }
+
+initialParserState :: ParserState
+initialParserState = ParserState{
+  progParser = buildExpressionParser [] termA, 
+  typeParser = buildExpressionParser initialTypeOpTable bType,
+  progOpTable = IM.fromAscList (zip [0 ..] [[]]),
+  typeOpTable = IM.fromAscList (zip [0 ..] initialTypeOpTable)}
+
+initialTypeOpTable = [[], [], [], [], [], [binOp AssocRight "->" Imply]]
+
+binOp assoc op f = Infix (reservedOp op >> return f) assoc  
+toOp op "infix" app var = binOp AssocNone op (binApp op app var)
+toOp op "infixr" app var = binOp AssocRight op (binApp op app var)
+toOp op "infixl" app var = binOp AssocLeft op (binApp op app var)
+binApp op app var x y = app (app (var op) x) y
 
 -- deriving instance Typeable P.ParseError
 -- instance Exception P.ParseError 
@@ -44,6 +67,33 @@ decl = do
   bs <- many $ try dataDecl <|> try primDecl <|> try typeSyn <|> funDecl
   eof
   return $ bs
+
+
+typeOperatorDecl :: Parser Decl
+typeOperatorDecl = do
+  reserved "type"
+  r <- choice [reserved i >> return i | i <- ["infix","infixr","infixl"]]
+  level <- fromInteger <$> integer
+  op <- operator
+  st <- getState
+  let table' = IM.insertWith (++) level [toOp op r TApp Var] $ typeOpTable st
+      type' = buildExpressionParser (map snd (IM.toAscList table')) bType
+  putState $ ParserState
+    (progParser st)  type' (progOpTable st) table'
+  return (TypeOperatorDecl op level r)
+
+progOperatorDecl :: Parser Decl
+progOperatorDecl = do
+  reserved "prog"
+  r <- choice [reserved i >> return i | i <- ["infix","infixr","infixl"]]
+  level <- fromInteger <$> integer
+  op <- operator
+  st <- getState
+  let table' = IM.insertWith (++) level [toOp op r App Var] $ progOpTable st
+      prog' = buildExpressionParser (map snd (IM.toAscList table')) termA
+  putState $ ParserState
+    prog' (typeParser st) table' (typeOpTable st) 
+  return (ProgOperatorDecl op level r)
 
 primDecl :: Parser Decl
 primDecl = do
@@ -109,14 +159,17 @@ star = reserved "*" >> return Star
 
 -- parser for types
 ty :: Parser Exp
-ty = buildExpressionParser typeOpTable bType
+ty = getState >>= \st -> typeParser st
+
+wrapPos :: Parser Exp -> Parser Exp
+wrapPos p = pos <$> getPosition <*> p
+  where pos x (Pos y e) | x==y = (Pos y e)
+        pos x y = Pos x y
+-- buildExpressionParser typeOpTable bType
 
 bType :: Parser Exp
-bType = try lamType <|> try forall <|> try atomType <|> parens ty
+bType = wrapPos $ try lamType <|> try forall <|> try atomType <|> parens ty
 
-binOp assoc op f = Infix (reservedOp op >> return f) assoc
-
-typeOpTable = [[binOp AssocRight "->" Imply]]
 
 lamType = do
   reservedOp "\\"
@@ -140,8 +193,10 @@ forall = do
   return $ foldr (\ x y -> Forall x y) p (map (\(Var x) -> x) as)
 
 -- parse term
-term :: Parser Exp
-term = try lambda <|> try compound <|> try caseExp <|> try letExp <|> parens term 
+termA :: Parser Exp
+termA = wrapPos $ try lambda <|> try compound <|> try caseExp <|> try letExp <|> parens term 
+
+term = getState >>= \ st -> progParser st
 
 lambda = do
   reservedOp "\\"

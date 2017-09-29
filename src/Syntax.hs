@@ -7,7 +7,7 @@ import Data.Char
 import qualified Data.Set as S
 import Data.List hiding (partition)
 import Debug.Trace
-
+import Text.Parsec.Pos
 type Name = String
 
 -- Variable convention: word begins with upper-case represents constant and
@@ -25,6 +25,7 @@ data Exp = Var Name
          | Case Exp [(Exp, Exp)]
          | Let [(Exp, Exp)] Exp
          | Ann Exp Exp
+         | Pos SourcePos Exp
          deriving (Show, Eq, Ord)
 
 
@@ -32,7 +33,16 @@ data Decl = DataDecl Exp Exp [(Exp, Exp)]
           | FunDecl Exp Exp [([Exp], Exp)]
           | Prim Exp Exp
           | Syn Exp Exp Exp
+          | TypeOperatorDecl String Int String
+          | ProgOperatorDecl String Int String
           deriving (Show)
+
+
+erasePosType (Pos _ e) = e
+erasePosType (TApp e1 e2) = TApp (erasePosType e1) (erasePosType e2)
+erasePosType (Imply e1 e2) = Imply (erasePosType e1) (erasePosType e2)
+erasePosType (Forall x e2) = Forall x (erasePosType e2)
+erasePosType a = a
 
 
 -- free variable of a type/kind exp
@@ -45,7 +55,7 @@ freeVar (App f1 f2) = (freeVar f1) `S.union` (freeVar f2)
 freeVar (Forall x f) = S.delete x (freeVar f)
 freeVar (Lambda p f) = freeVar f `S.difference` freeVar p
 freeVar (Imply b h) = freeVar b `S.union` freeVar h
-
+freeVar (Pos _ b) = freeVar b
 -- eigen variable of a type exp  
 eigenVar = S.toList . eigen
 eigen Star = S.empty
@@ -55,7 +65,7 @@ eigen (App f1 f2) = (eigen f1) `S.union` (eigen f2)
 eigen (Forall x f) = S.delete x (eigen f)
 eigen (Imply b h) = eigen b `S.union` eigen h
 eigen (Lambda p f) = eigen f 
-
+eigen (Pos _ b) = eigen b
 
 
 flatten :: Exp -> [Exp]
