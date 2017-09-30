@@ -20,7 +20,7 @@ module hoas where
 -- bad = selfApply (Abs selfApply)
 
 data Unit :: * where
-
+  Unit :: Unit
 
 data PTerm :: * -> * where
   PVar :: forall a . a -> PTerm a

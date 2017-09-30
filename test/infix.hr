@@ -1,0 +1,17 @@
+module inf where
+
+prog infixl 6 ++ 
+prog infixr 9 .
+
+
+
+data List :: * -> * where
+ Nil :: forall a . List a 
+ Cons :: forall a . a -> List a -> List a
+
+(++) :: forall a . List a -> List a -> List a
+(++) Nil l2 = l2
+(++) (Cons a as) l2 = Cons a (as ++ l2)
+
+(.) :: forall p q r . (q -> r) -> (p -> q) -> p -> r
+(.) f g x = f (g x)
