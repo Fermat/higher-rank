@@ -120,11 +120,11 @@ typeSyn =
 dataDecl :: Parser Decl
 dataDecl = do
   reserved "data"
-  n <- con
+  n <- try con 
   reservedOp "::"
   k <- ty
   reserved "where"
-  ls <- option [] $ indented >> (block $ do{c <- con; reservedOp "::"; t <- ty; return (c, t)})
+  ls <- option [] $ indented >> (block $ do{c <- try con <|> opCon; reservedOp "::"; t <- ty; return (c, t)})
   return $ DataDecl n k ls
   
 -- (fun-name, [([pats], e)])    
@@ -293,8 +293,8 @@ gottlobStyle = Token.LanguageDef
                 , Token.nestedComments = True
                 , Token.identStart     = letter
                 , Token.identLetter    = alphaNum <|> oneOf "_'"
-                , Token.opStart        = oneOf ":!#$%&*+.,/<=>?@\\^|-"
-                , Token.opLetter       = (oneOf ":!#$%&*+.,/<=>?@\\^|-") <|> alphaNum
+                , Token.opStart        = oneOf ":!#$%&*+.,/<=>?@\\^|-[]"
+                , Token.opLetter       = (oneOf ":!#$%&*+.,/<=>?@\\^|-[]") <|> alphaNum
                 , Token.caseSensitive  = True
                 , Token.reservedNames =
                   [
