@@ -99,7 +99,7 @@ inferKind (Imply f1 f2) =
                  (text "unexpected kind"<+> disp a <+>
                    text "for" <+> disp f1)
 
-
+inferKind a = error $ "from inferKind" ++ show a
 
 runKinding :: Exp -> KindDef -> Either Doc Exp
 runKinding t g = do (k, sub) <- runReaderT (runStateT (evalStateT (inferKind t) 0) []) g 
@@ -128,7 +128,8 @@ splitDecl ((Prim fun t):xs) =
     (d, f, (fun, t):p, ty)
 splitDecl ((Syn ty k t):xs) =
   let (d, f, p, ty') = splitDecl xs in
-    (d, f, p, (ty, t, k):ty')    
+    (d, f, p, (ty, t, k):ty')
+splitDecl (_:xs) = splitDecl xs   
 splitDecl [] = ([], [], [], [])
 
 kindData ds g =

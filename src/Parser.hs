@@ -68,7 +68,7 @@ decl = do
   reserved "module"
   name <- identifier
   reserved "where"
-  bs <- many $ try dataDecl <|> try primDecl <|> try typeSyn <|> funDecl
+  bs <- many $ try dataDecl <|> try primDecl <|> try typeSyn <|> try typeOperatorDecl <|> try progOperatorDecl <|> funDecl
   eof
   return $ bs
 
@@ -80,7 +80,7 @@ typeOperatorDecl = do
   level <- fromInteger <$> integer
   op <- operator
   st <- getState
-  let table' = IM.insertWith (++) level [toOp op r TApp Var] $ typeOpTable st
+  let table' = IM.insertWith (++) level [toOp op r App Const] $ typeOpTable st
       type' = buildExpressionParser (map snd (IM.toAscList table')) bType
   putState $ ParserState
     (progParser st)  type' (progOpTable st) table'
@@ -110,7 +110,7 @@ primDecl = do
 typeSyn :: Parser Decl
 typeSyn = 
   do reserved "type"
-     tycon <- con
+     tycon <- try con <|> opCon
      reservedOp "::"
      k <- ty
      reservedOp "="
@@ -130,28 +130,39 @@ dataDecl = do
 -- (fun-name, [([pats], e)])    
 funDecl :: Parser Decl
 funDecl = do
-  v <- var
+  v <- try var <|> opVar
   reservedOp "::"
   t <- ty
-  ls <- manyTill eq (lookAhead (reserved "data") <|> lookAhead (reserved "type") <|>lookAhead (reserved "primitive") <|> (isNotVar v) <|> try eof)
+  ls <- manyTill eq (lookAhead (reserved "data") <|> lookAhead (reserved "type") <|> lookAhead (reserved "prog")  <|>lookAhead (reserved "primitive") <|> (isNotVar v) <|> try eof)
   return $ FunDecl v t ls
     where eq = do
-            var
+            try var <|> opVar
             ps <- many $ try con <|> try var <|> parens patComp
             reservedOp "="
             p <- term
             return (ps, p)
           isNotVar v = do
-            v' <- lookAhead $ try var
+            v' <- lookAhead $ try var <|> try opVar
             when (getName v' == getName v) $ parserFail "from funDecl"
 
-            
 var :: Parser Exp
 var = do
   p <- getPosition
   n <- identifier
   when (isUpper (head n)) $ parserFail "expected to begin with lowercase letter"
   return (Var n p)
+
+opVar :: Parser Exp
+opVar = do
+  p <- getPosition
+  n <- parens operator
+  return (Var n p)
+
+opCon :: Parser Exp
+opCon = do
+  p <- getPosition
+  n <- parens operator
+  return (Const n p)
 
 con :: Parser Exp
 con = do
@@ -175,7 +186,8 @@ bType = try lamType <|> try forall <|> try atomType <|> parens ty
 lamType = do
   reservedOp "\\"
   as <- many1 $ var
-  reservedOp "."
+  o <- operator
+  when (o /= ".") $ parserFail "expected '.'"
   t <- ty
   return $ foldr (\ x y -> Lambda x y) t as  
   
@@ -189,7 +201,8 @@ arg =  (try con <|> try var <|> try (parens ty))
 forall = do
   reserved "forall"
   as <- many1 var
-  reservedOp "."
+  o <- operator -- char '.'
+  when (o /= ".") $ parserFail "expected '.'"
   p <- ty
   return $ foldr (\ x y -> Forall x y) p (map (\(Var x _) -> x) as)
 
@@ -298,7 +311,7 @@ gottlobStyle = Token.LanguageDef
                     "tactic", "deriving"
                   ]
                , Token.reservedOpNames =
-                    ["\\", "->", "<=", ".","=", "::", ":", "=>"]
+                    ["\\", "->", "=", "::"]
                 }
 
 tokenizer = Token.makeTokenParser gottlobStyle

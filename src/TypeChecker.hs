@@ -34,7 +34,7 @@ makeTyEnv' ((Prim (Var f _) t):xs) =
 makeTyEnv' ((Syn (Const t _) k e):xs) =
   let (tyenv, tydef) = makeTyEnv' xs in
     (tyenv, (t, e):tydef)
-
+makeTyEnv' (_:xs) = makeTyEnv' xs
 makeLam pats e = foldr (\ p e' -> Lambda p e') e pats
 
 

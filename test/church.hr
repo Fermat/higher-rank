@@ -1,8 +1,9 @@
 module church where
-
+type infixl 7 ,
+prog infixl 7 , 
 type Nat :: * = forall x . (x -> x) -> x -> x
 
-zero :: Nat -> Nat
+zero :: Nat
 zero = \ s z -> z
 -- zero = \\ x . \ s : x -> x . \ z : x . z
 succ :: Nat -> Nat
@@ -31,22 +32,22 @@ exp' :: Nat -> Nat -> Nat
 exp' n m = \ s z ->  (m n) s z
 -- note that exp' n m = m n will not type check because application does not generalize variables
 
-type Pair ::  * -> * -> * = \ a b . forall x . (a -> b -> x) -> x
+type (,) ::  * -> * -> * = \ a b . forall x . (a -> b -> x) -> x
 
-pair :: forall a b . a -> b -> Pair a b
-pair x y = \ f -> f x y
+(,) :: forall a b . a -> b -> (a, b)
+(,) x y = \ f -> f x y
 
-fst :: forall a b . Pair a b -> a
+fst :: forall a b . (a, b) -> a
 fst = \ p -> p (\ a b -> a)
 
-snd :: forall a b . Pair a b -> b
+snd :: forall a b . (a, b) -> b
 snd = \ p -> p (\ a b -> b)
 
-oneP :: Pair Nat Nat
-oneP = pair one one
+oneP :: (Nat , Nat)
+oneP = (one , one)
 
 pred :: Nat -> Nat
-pred n = fst (n (\ r -> pair (snd r) (succ (snd r))) (pair zero zero))
+pred n = fst (n (\ r -> (snd r, succ (snd r))) (zero, zero))
 
 type List :: * -> * =   \ a . forall x . (a -> x -> x) -> x -> x
 
@@ -57,5 +58,5 @@ cons :: forall a . a -> List a -> List a
 cons = \ a as c n -> c a (as c n)
 
 tail :: forall a . List a -> (List a) 
-tail l =  fst (l (\ a r -> pair (snd r) (cons a (snd r))) (pair nil nil))
+tail l =  fst (l (\ a r -> (snd r, cons a (snd r))) (nil, nil))
 

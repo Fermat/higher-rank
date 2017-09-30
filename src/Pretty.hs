@@ -146,7 +146,8 @@ instance Disp Decl where
 
   disp (Syn f k t) =
     text "type" <+> disp f <+> text "::" <+> disp k <+> text "=" <+> disp t
-
+  disp (TypeOperatorDecl op l r) = text "type" <+> disp r <+> disp l <+> disp op
+  disp (ProgOperatorDecl op l r) = text "prog" <+> disp r <+> disp l <+> disp op
 instance Disp [Decl] where
   disp ls = vcat $ map disp ls
   
