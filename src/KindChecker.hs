@@ -51,7 +51,7 @@ inferKind (App f1 f2) =
   do k1 <- inferKind f1
      k2 <- inferKind f2
      k <- makeName "k"
-     case runMatch k1 (Imply k2 (Var k undefined)) of
+     case runMatch k1 (Imply k2 (Var k dummyPos)) of
        [] -> throwError $
              text "Kinding error:" $$
              (text "kind mismatch for" <+>
@@ -61,11 +61,11 @@ inferKind (App f1 f2) =
          do env <- lift get
             let env' = map (\(y, e) -> (y, apply x e)) env
             lift $ put (env') 
-            return $ apply x (Var k undefined) 
+            return $ apply x (Var k dummyPos) 
 
 inferKind (Forall x f) = 
   do k <- makeName "k"
-     lift $ modify (\e -> (x, Var k undefined): e)
+     lift $ modify (\e -> (x, Var k dummyPos): e)
      k <- inferKind f
      let k' = grounding k
      case k' of
@@ -76,7 +76,7 @@ inferKind (Forall x f) =
 
 inferKind (Lambda (Var x p) f) = 
   do k <- makeName "k"
-     lift $ modify (\e -> (x, Var k undefined): e)
+     lift $ modify (\e -> (x, Var k dummyPos): e)
      fk <- inferKind f
      env <- lift get
      case lookup x env of

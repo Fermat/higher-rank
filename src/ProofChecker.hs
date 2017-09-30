@@ -107,7 +107,7 @@ proofCheck (App e1 e2) =
 proofCheck (Abs x t) = 
   do n<- get
      modify (+1)
-     lift $ lift (modify (\e -> (x, Var ("kvar"++show n ++ "#") undefined): e))
+     lift $ lift (modify (\e -> (x, Var ("kvar"++show n ++ "#") dummyPos): e))
      f <- (proofCheck t)
      e <- ask
      if isFree x e
@@ -210,7 +210,7 @@ checkPattern p t =
                            h' = apply subs h
                            bs' = map (apply subs) bs
                            pss = zip ps bs'
-                       in if h' == t then
+                       in if h' `alphaEq` t then
                             do res <- mapM (\ (x, y) -> checkPattern x y) pss
                                return $ concat res
                           else lift $ lift $ lift $ Left $

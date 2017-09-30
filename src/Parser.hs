@@ -143,7 +143,7 @@ funDecl = do
             return (ps, p)
           isNotVar v = do
             v' <- lookAhead $ try var
-            when (v' == v) $ parserFail "from funDecl"
+            when (getName v' == getName v) $ parserFail "from funDecl"
 
             
 var :: Parser Exp

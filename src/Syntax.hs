@@ -37,7 +37,7 @@ data Decl = DataDecl Exp Exp [(Exp, Exp)]
           deriving (Show)
 
 
-
+dummyPos = initialPos "dummy"
 -- free variable of a type/kind exp
 freeVars = S.toList . freeVar 
 
@@ -95,7 +95,7 @@ erase (App a1 a2) = App (erase a1) (erase a2)
 
 getName (Const x _) = x
 getName (Var x _) = x
-getName _ = error "from getName"
+getName a = error ("from getName: " ++ show a)
 
 newtype Subst = Subst [(String, Exp)] deriving (Show, Eq)
 
@@ -150,7 +150,8 @@ norm Star = Star
 norm (Var a p) = Var a p
 norm (Const a p) = Const a p
 norm (Ann a t) = Ann (norm a) (norm t)
-norm (Lambda (Var x p) (App t e)) | getName e == x = norm t
+norm (Lambda (Var x p) (App t e)) | isVar e = if getName e == x then norm t
+                                              else Lambda (Var x p) (norm $ App t e)
 norm (Lambda x t) = Lambda x (norm t)
 norm (Abs x t) = Abs x (norm t)
 norm (TApp t1 t2) = TApp (norm t1) (norm t2)
@@ -192,7 +193,7 @@ normalizeTypeDef (Forall x t) = Forall x (normalizeTypeDef t)
 -- normTy t g | trace ("normTy " ++show ("hi") ++"\n") False = undefined 
 normTy (Var a p) g = Var a p
 normTy (Const a p) g =
-  case lookup (Const a p) g of
+  case lookup a g of
     Nothing -> (Const a p)
     Just b -> normTy b g
 normTy (Lambda x t) g = Lambda x (normTy t g)

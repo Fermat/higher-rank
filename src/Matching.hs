@@ -15,7 +15,7 @@ import Debug.Trace
 -- convert a type expression that contains Imply to App (Const "->")
 convert :: Exp -> Exp
 -- convert (Pos _ e) = convert e
-convert (Imply x y) = App (App (Const "->" undefined) (convert x)) (convert y)
+convert (Imply x y) = App (App (Const "->" dummyPos) (convert x)) (convert y)
 convert Star = Star
 convert a@(Var _ _) = a
 convert a@(Const _ _) = a
@@ -78,8 +78,8 @@ match ((e, Var a p):xs, vars, sub, i) = match ((Var a p, e):xs, vars, sub, i)
 
 match ((Forall x e, (Forall y e')):xs, vars, sub, i)
   = let fresh = "u"++ show i ++ "#"
-        e1 = apply (Subst [(x, Const fresh undefined)]) e
-        e2 = apply (Subst [(y, Const fresh undefined)]) e' in
+        e1 = apply (Subst [(x, Const fresh dummyPos)]) e
+        e2 = apply (Subst [(y, Const fresh dummyPos)]) e' in
       match ((e1, e2):xs, fresh:vars, sub, i+1)
 
 match ((e1, e2):res, vars, sub, i)
@@ -112,7 +112,7 @@ genProj l =
   if l == 0 then []
   else let vars = map (\ y -> "x"++ show y ++ "#") $ take l [1..]
            ts = map (\ z ->
-                        foldr (\ x y -> Lambda (Var x undefined) y) (Var z undefined) vars)
+                        foldr (\ x y -> Lambda (Var x dummyPos) y) (Var z dummyPos) vars)
                 vars
        in ts
 
@@ -123,10 +123,10 @@ genImitation n head arity arity' =
       n' = n + arity'
       fvars = map (\ x -> "h" ++ show x ++ "#") l
       bvars = map (\ x -> "m" ++ show x ++ "#") lb
-      bvars' = map (\ x -> Var x undefined) bvars
-      args = map (\ c -> (foldl' (\ z x -> App z x) (Var c undefined) bvars')) fvars
+      bvars' = map (\ x -> Var x dummyPos) bvars
+      args = map (\ c -> (foldl' (\ z x -> App z x) (Var c dummyPos) bvars')) fvars
       body = foldl' (\ z x -> App z x) head args
-      res = foldr (\ x y -> Lambda (Var x undefined) y) body bvars in
+      res = foldr (\ x y -> Lambda (Var x dummyPos) y) body bvars in
     (res, n')
 
                                         
