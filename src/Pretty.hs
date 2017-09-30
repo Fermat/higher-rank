@@ -61,10 +61,10 @@ instance Disp (Maybe Exp) where
 
 instance Disp Exp where
 --  disp r | trace ("disp " ++ show r) False = undefined
-  disp (Const x) | isUpper (head x) = disp x
+  disp (Const x p) | isUpper (head x) = disp x
                  | otherwise = brackets $ disp x
   disp Star = text "*"
-  disp (Var x) = disp x
+  disp (Var x p) = disp x
 --  disp (Ann (Var x) Nothing) = disp x
   disp (Ann e t) = parens $ disp e <+> text "::" $$ (nest 5 $ disp t)
 --  disp (Ann e t) = parens $ disp x <+> text "::" <+>disp t
@@ -108,12 +108,11 @@ instance Disp Exp where
   disp (a@(Let ds e)) =
     text "let" <+> helper ds <+> text "in" $$ nest 2 (disp e)
     where helper ds = vcat (map (\ (n, exp) -> disp n <+> text "=" $$ nest 2 (disp exp)) ds)
-  disp (Pos _ t) = disp t
   
   precedence (Imply _ _) = 4
-  precedence (Var _) = 12
+  precedence (Var _ _) = 12
   precedence (Star) = 12
-  precedence (Const _) = 12
+  precedence (Const _ _) = 12
   precedence (App _ _) = 10
   precedence (TApp _ _) = 10
   precedence _ = 0

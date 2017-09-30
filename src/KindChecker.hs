@@ -16,7 +16,7 @@ type KindDef = [(Name, Exp)]
 type KCMonad a = StateT Int (StateT KindDef (ReaderT KindDef (Either Doc))) a  
 
 grounding :: Exp -> Exp
-grounding (Var x) = Star
+grounding (Var x _) = Star
 grounding (Imply k1 k2) = Imply (grounding k1) (grounding k2)
 grounding Star = Star
 
@@ -26,7 +26,7 @@ makeName name =
      return $ name ++ show m ++ "#"
   
 inferKind :: Exp -> KCMonad Exp
-inferKind (Const x) = 
+inferKind (Const x _) = 
   do genv <- ask
      case lookup x genv of
        Just k -> return k
@@ -38,7 +38,7 @@ inferKind (Const x) =
            text "Kinding error: " <+>
            text "undefined type constructor:" <+> disp x
 
-inferKind (Var x) = 
+inferKind (Var x _) = 
   do env <- lift get
      env' <- ask
      case lookup x (env++env') of
@@ -51,7 +51,7 @@ inferKind (App f1 f2) =
   do k1 <- inferKind f1
      k2 <- inferKind f2
      k <- makeName "k"
-     case runMatch k1 (Imply k2 (Var k)) of
+     case runMatch k1 (Imply k2 (Var k undefined)) of
        [] -> throwError $
              text "Kinding error:" $$
              (text "kind mismatch for" <+>
@@ -65,7 +65,7 @@ inferKind (App f1 f2) =
 
 inferKind (Forall x f) = 
   do k <- makeName "k"
-     lift $ modify (\e -> (x, Var k): e)
+     lift $ modify (\e -> (x, Var k undefined): e)
      k <- inferKind f
      let k' = grounding k
      case k' of
@@ -99,7 +99,7 @@ inferKind (Imply f1 f2) =
                  (text "unexpected kind"<+> disp a <+>
                    text "for" <+> disp f1)
 
-inferKind (Pos _ f) = inferKind f
+
 
 runKinding :: Exp -> KindDef -> Either Doc Exp
 runKinding t g = do (k, sub) <- runReaderT (runStateT (evalStateT (inferKind t) 0) []) g 

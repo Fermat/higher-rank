@@ -15,28 +15,28 @@ import Debug.Trace
 -- convert a type expression that contains Imply to App (Const "->")
 convert :: Exp -> Exp
 -- convert (Pos _ e) = convert e
-convert (Imply x y) = App (App (Const "->") (convert x)) (convert y)
+convert (Imply x y) = App (App (Const "->" undefined) (convert x)) (convert y)
 convert Star = Star
-convert a@(Var _) = a
-convert a@(Const _) = a
+convert a@(Var _ _) = a
+convert a@(Const _ _) = a
 convert (App x y) = App (convert x) (convert y)
 convert (Forall x e) = Forall x (convert e)
 convert (Lambda x e) = Lambda x (convert e)
 convert e = error $ show e ++ "from convert"
 -- inversion of convert
 invert Star = Star
-invert a@(Var _) = a
-invert a@(Const _) = a
+invert a@(Var _ _) = a
+invert a@(Const _ _) = a
 invert (Forall x e) = Forall x (invert e)
 invert (Lambda x e) = Lambda x (invert e)
-invert (App (App (Const "->") x) y) = Imply (invert x) (invert y)
+invert (App (App (Const "->" _) x) y) = Imply (invert x) (invert y)
 invert (App x y) = App (invert x) (invert y)
 
 -- runMatch run the matching function, and postprocess the results by removing
 -- unused substitutions and duplicatations
 
 runMatch e1 e2 =
-  let states = match ([(convert $ erasePosType e1, convert $ erasePosType e2)], [], Subst [], 0)
+  let states = match ([(convert e1, convert e2)], [], Subst [], 0)
       fvs = freeVar e1 `S.union` freeVar e2
       subs = [sub | ([], vars, sub, _) <- states, apart sub, agree sub, apartEV sub vars]
       subs' = [ s'  | Subst s <- subs, 
@@ -65,37 +65,39 @@ agree (Subst s) =
 type MatchState = ([(Exp, Exp)], [Name], Subst, Int)
 
 match :: MatchState -> [MatchState]
-match ((e1, e2):xs, vars, sub, i) | e1 == e2 = match (xs, vars, sub, i)
-match ((Var a, e):xs, vars, sub, i)
+match ((Star, Star):xs, vars, sub, i) = match (xs, vars, sub, i)
+
+match ((Var a p, Var b p'):xs, vars, sub, i) | b == a = match (xs, vars, sub, i)
+match ((Var a p, e):xs, vars, sub, i)
   | a `elem` freeVars e = []
   | otherwise =
     let newSub = Subst [(a, e)] in
       match (map (\ (a1, a2) -> (apply newSub a1, apply newSub a2)) xs,
               vars, extend newSub sub, i)
-match ((e, Var a):xs, vars, sub, i) = match ((Var a, e):xs, vars, sub, i)
+match ((e, Var a p):xs, vars, sub, i) = match ((Var a p, e):xs, vars, sub, i)
 
 match ((Forall x e, (Forall y e')):xs, vars, sub, i)
   = let fresh = "u"++ show i ++ "#"
-        e1 = apply (Subst [(x, Const fresh)]) e
-        e2 = apply (Subst [(y, Const fresh)]) e' in
+        e1 = apply (Subst [(x, Const fresh undefined)]) e
+        e2 = apply (Subst [(y, Const fresh undefined)]) e' in
       match ((e1, e2):xs, fresh:vars, sub, i+1)
 
 match ((e1, e2):res, vars, sub, i)
-  | (Const x):xs <- flatten e1,
-    (Const y):ys <- flatten e2,
+  | (Const x _):xs <- flatten e1,
+    (Const y _):ys <- flatten e2,
     x == y, length xs == length ys = match (zip xs ys ++ res, vars, sub, i)
 
 match ((e1, e2):res, vars, sub, i)
-  | (Const x):xs <- flatten e1,
-    (Var z):ys <- flatten e2 = match ((e2, e1):res, vars, sub, i)
+  | (Const x _):xs <- flatten e1,
+    (Var z _):ys <- flatten e2 = match ((e2, e1):res, vars, sub, i)
     
 match ((e1, e2):res, vars, sub, i)
-  | (Var x):xs <- flatten e1,
-    (Const y):ys <- flatten e2 =
+  | (Var x p1):xs <- flatten e1,
+    (Const y p2):ys <- flatten e2 =
       let argL = length xs
           argL' = length ys
           prjs = genProj argL
-          (imi, j) = genImitation i (Const y) argL argL'
+          (imi, j) = genImitation i (Const y p2) argL argL'
           iminew = normalize $ apply (Subst [(x, imi)]) e1
           newsubs = Subst [(x, imi)] : map (\ p -> Subst [(x, p)]) prjs
           neweqs = (iminew, e2) : map (\ x -> (x, e2)) xs
@@ -109,7 +111,9 @@ genProj :: Int -> [Exp]
 genProj l =
   if l == 0 then []
   else let vars = map (\ y -> "x"++ show y ++ "#") $ take l [1..]
-           ts = map (\ z -> foldr (\ x y -> Lambda (Var x) y) (Var z) vars) vars
+           ts = map (\ z ->
+                        foldr (\ x y -> Lambda (Var x undefined) y) (Var z undefined) vars)
+                vars
        in ts
 
 genImitation :: Int -> Exp -> Int -> Int -> (Exp, Int)
@@ -119,10 +123,10 @@ genImitation n head arity arity' =
       n' = n + arity'
       fvars = map (\ x -> "h" ++ show x ++ "#") l
       bvars = map (\ x -> "m" ++ show x ++ "#") lb
-      bvars' = map Var bvars
-      args = map (\ c -> (foldl' (\ z x -> App z x) (Var c) bvars')) fvars
+      bvars' = map (\ x -> Var x undefined) bvars
+      args = map (\ c -> (foldl' (\ z x -> App z x) (Var c undefined) bvars')) fvars
       body = foldl' (\ z x -> App z x) head args
-      res = foldr (\ x y -> Lambda (Var x) y) body bvars in
+      res = foldr (\ x y -> Lambda (Var x undefined) y) body bvars in
     (res, n')
 
                                         

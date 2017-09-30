@@ -23,13 +23,6 @@ parseModule :: String -> String -> Either P.ParseError [Decl]
 parseModule srcName cnts = 
  runIndent $ runParserT decl initialParserState srcName cnts
 
-
--- parseExp :: String -> Either P.ParseError Exp
--- parseExp s = runIndent $ runParserT (try (parens term) <|> term) () [] s
-
--- parseExps :: String -> Either P.ParseError [Exp]
--- parseExps s = runIndent [] $ runParserT (many1 (try (parens term) <|> term)) () [] s
-
 type Parser a = IndentParser String ParserState a
 
 data ParserState =
@@ -50,10 +43,21 @@ initialParserState = ParserState{
 initialTypeOpTable = [[], [], [], [], [], [binOp AssocRight "->" Imply]]
 
 binOp assoc op f = Infix (reservedOp op >> return f) assoc  
-toOp op "infix" app var = binOp AssocNone op (binApp op app var)
-toOp op "infixr" app var = binOp AssocRight op (binApp op app var)
-toOp op "infixl" app var = binOp AssocLeft op (binApp op app var)
-binApp op app var x y = app (app (var op) x) y
+
+toOp op "infix" app var =
+  Infix (reservedOp op >> getPosition >>= \ p -> return (\ x y -> app (app (var op p) x) y))
+  AssocNone
+-- binOp AssocNone op (binApp op app var)
+toOp op "infixr" app var =
+  Infix (reservedOp op >> getPosition >>= \ p -> return (\ x y -> app (app (var op p) x) y))
+  AssocRight
+  -- binOp AssocRight op (binApp op app var)
+toOp op "infixl" app var =
+  Infix (reservedOp op >> getPosition >>= \ p -> return (\ x y -> app (app (var op p) x) y))
+  AssocLeft
+-- binOp AssocLeft op (binApp op app var)
+
+-- binApp op app var x y = app (app (var op) x) y
 
 -- deriving instance Typeable P.ParseError
 -- instance Exception P.ParseError 
@@ -146,13 +150,15 @@ var :: Parser Exp
 var = do
   n <- identifier
   when (isUpper (head n)) $ parserFail "expected to begin with lowercase letter"
-  return (Var n)
+  p <- getPosition
+  return (Var n p)
 
 con :: Parser Exp
 con = do
   n <- identifier  
   when (isLower (head n)) $ parserFail "expected to begin with uppercase letter"
-  return (Const n)
+  p <- getPosition
+  return (Const n p)
 
 star :: Parser Exp
 star = reserved "*" >> return Star
@@ -161,14 +167,9 @@ star = reserved "*" >> return Star
 ty :: Parser Exp
 ty = getState >>= \st -> typeParser st
 
-wrapPos :: Parser Exp -> Parser Exp
-wrapPos p = pos <$> getPosition <*> p
-  where pos x (Pos y e) | x==y = (Pos y e)
-        pos x y = Pos x y
--- buildExpressionParser typeOpTable bType
 
 bType :: Parser Exp
-bType = wrapPos $ try lamType <|> try forall <|> try atomType <|> parens ty
+bType = try lamType <|> try forall <|> try atomType <|> parens ty
 
 
 lamType = do
@@ -190,11 +191,11 @@ forall = do
   as <- many1 var
   reservedOp "."
   p <- ty
-  return $ foldr (\ x y -> Forall x y) p (map (\(Var x) -> x) as)
+  return $ foldr (\ x y -> Forall x y) p (map (\(Var x _) -> x) as)
 
 -- parse term
 termA :: Parser Exp
-termA = wrapPos $ try lambda <|> try compound <|> try caseExp <|> try letExp <|> parens term 
+termA = try lambda <|> try compound <|> try caseExp <|> try letExp <|> parens term 
 
 term = getState >>= \ st -> progParser st
 
