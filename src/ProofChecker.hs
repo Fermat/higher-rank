@@ -36,7 +36,7 @@ kindable t = do
                           nest 2 (text "expected: *" <+>
                                    text "actual kind:" <+> disp e)) 
 
-proofChecks ks tyenv l = mapM (\ ((Var n), f, t) -> runProofCheck n t f ks tyenv) l
+proofChecks ks tyenv l = mapM (\ ((Var n _), f, t) -> runProofCheck n t f ks tyenv) l
 runProofCheck :: Name -> Exp -> Exp -> KindDef -> [(Name, Exp)] -> Either Doc ()
 runProofCheck n t f ks ev = 
   case evalStateT (runReaderT (evalStateT (proofCheck t) 0) ev) ks of
@@ -49,7 +49,7 @@ runProofCheck n t f ks ev =
            
 proofCheck :: Exp -> PCMonad Exp
 --proofCheck state | trace ("proofCheck " ++show (state) ++"\n") False = undefined
-proofCheck (Var x) =
+proofCheck (Var x _) =
   do env <- ask
      case lookup x env of
        Nothing -> lift $ lift $ lift $ Left 
@@ -60,7 +60,7 @@ proofCheck (Var x) =
          do kindable f 
             return f
 
-proofCheck (Const x) =
+proofCheck (Const x _) =
   do env <- ask
      case lookup x env of
        Nothing -> lift $ lift $ lift $ Left 
@@ -107,7 +107,7 @@ proofCheck (App e1 e2) =
 proofCheck (Abs x t) = 
   do n<- get
      modify (+1)
-     lift $ lift (modify (\e -> (x, Var $ "kvar"++show n ++ "#"): e))
+     lift $ lift (modify (\e -> (x, Var ("kvar"++show n ++ "#") undefined): e))
      f <- (proofCheck t)
      e <- ask
      if isFree x e
@@ -190,12 +190,12 @@ proofCheck (Let defs e) =
 proofCheck e = error $ "from proofCheck " ++ show e
        
 checkPattern :: Exp -> Exp -> PCMonad [(Name, Exp)]
-checkPattern (Var x) t = return [(x, t)]
+checkPattern (Var x _) t = return [(x, t)]
 checkPattern p t =
   let (p1:ps) = flatten p
       (c:ts) = flattenT p1   
   in case c of
-       Const con ->
+       Const con _ ->
          do env <- ask
             case lookup con env of
               Nothing -> lift $ lift $ lift $ Left 

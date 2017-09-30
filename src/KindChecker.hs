@@ -26,7 +26,7 @@ makeName name =
      return $ name ++ show m ++ "#"
   
 inferKind :: Exp -> KCMonad Exp
-inferKind (Const x _) = 
+inferKind (Const x p) = 
   do genv <- ask
      case lookup x genv of
        Just k -> return k
@@ -35,16 +35,16 @@ inferKind (Const x _) =
          if x == "Void#" then return Star
          else 
            throwError $
-           text "Kinding error: " <+>
-           text "undefined type constructor:" <+> disp x
+           text "Kinding error" <+> disp p $$ nest 2
+           (text "undefined type constructor:" <+> disp x)
 
-inferKind (Var x _) = 
+inferKind (Var x p) = 
   do env <- lift get
      env' <- ask
      case lookup x (env++env') of
        Nothing -> throwError $
-                  text "Kinding error: " <+>
-                  text "unbound type variable:" <+> disp x
+                  text "Kinding error" <+> disp p $$ nest 2
+                  (text "unbound type variable:" <+> disp x)
        Just k -> return k  
 
 inferKind (App f1 f2) = 
@@ -61,7 +61,7 @@ inferKind (App f1 f2) =
          do env <- lift get
             let env' = map (\(y, e) -> (y, apply x e)) env
             lift $ put (env') 
-            return $ apply x (Var k) 
+            return $ apply x (Var k undefined) 
 
 inferKind (Forall x f) = 
   do k <- makeName "k"
@@ -74,9 +74,9 @@ inferKind (Forall x f) =
             (text "unexpected kind"<+> disp k' <+>
               text "for" <+> disp f)
 
-inferKind (Lambda (Var x) f) = 
+inferKind (Lambda (Var x p) f) = 
   do k <- makeName "k"
-     lift $ modify (\e -> (x, Var k): e)
+     lift $ modify (\e -> (x, Var k undefined): e)
      fk <- inferKind f
      env <- lift get
      case lookup x env of
@@ -112,17 +112,17 @@ runKinding' t g = runReaderT (runStateT (evalStateT (inferKind t) 0) []) g
 
 instance Exception Doc 
 
-getKindDef ((DataDecl (Const d) k ls):as) = (d, k) : getKindDef as
-getKindDef ((Syn (Const d) k t):as) = (d, k) : getKindDef as
+getKindDef ((DataDecl (Const d _) k ls):as) = (d, k) : getKindDef as
+getKindDef ((Syn (Const d _) k t):as) = (d, k) : getKindDef as
 getKindDef (_:as) = getKindDef as
 getKindDef [] = []
 
 splitDecl ((DataDecl _ _ cons):xs) =
   let (d, f, p, t) = splitDecl xs in
     (cons++d, f, p, t)
-splitDecl ((FunDecl (Var fun) t _):xs) =
+splitDecl ((FunDecl (Var fun p') t _):xs) =
   let (d, f, p, ty) = splitDecl xs in
-    (d, (Var fun, t):f, p, ty)
+    (d, (Var fun p', t):f, p, ty)
 splitDecl ((Prim fun t):xs) =
   let (d, f, p, ty) = splitDecl xs in
     (d, f, (fun, t):p, ty)

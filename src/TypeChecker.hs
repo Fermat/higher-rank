@@ -24,11 +24,11 @@ makeTyEnv' :: [Decl] -> (TyEnv, TyDef)
 makeTyEnv' [] = ([], [])
 makeTyEnv' ((DataDecl _ _ cons):xs) =
   let (tyenv, tydef) = makeTyEnv' xs in
-    ([(d, e) | (Const d, e) <- cons] ++ tyenv, tydef )
-makeTyEnv' ((FunDecl (Var f) t _):xs) =
+    ([(d, e) | (Const d _, e) <- cons] ++ tyenv, tydef )
+makeTyEnv' ((FunDecl (Var f _) t _):xs) =
   let (tyenv, tydef) = makeTyEnv' xs in 
     ((f, t):tyenv, tydef)
-makeTyEnv' ((Prim (Var f) t):xs) =
+makeTyEnv' ((Prim (Var f _) t):xs) =
   let (tyenv, tydef) = makeTyEnv' xs in
     ((f, t):tyenv, tydef)
 makeTyEnv' ((Syn t k e):xs) =
@@ -38,20 +38,20 @@ makeTyEnv' ((Syn t k e):xs) =
 makeLam pats e = foldr (\ p e' -> Lambda p e') e pats
 
 
-process fv (Var x) =
+process fv (Var x p) =
   if x `elem` fv then
-    (Const "Void#")
-  else (Var x)
-process fv (Const x) =
-  if isUpper $ head x then Const x
-  else (Var x)
+    (Const "Void#" p)
+  else (Var x p)
+process fv (Const x p) =
+  if isUpper $ head x then Const x p
+  else (Var x p)
 process fv (App e1 e2) = App (process fv e1) (process fv e2)
 process fv (TApp e1 e2) = TApp (process fv e1) (process fv e2)
 process fv (Imply e1 e2) = Imply (process fv e1) (process fv e2)
 process fv (Lambda (Ann p t) e2) =
   Lambda (Ann (process fv p) (process fv t)) (process fv e2)
-process fv (Lambda (Var x) e2) =
-  Lambda (Var x) (process fv e2)
+process fv (Lambda (Var x p) e2) =
+  Lambda (Var x p) (process fv e2)
 process fv (Abs x e2) = Abs x (process fv e2)
 process fv (Forall x e2) = Forall x (process fv e2)
 process fv (Ann e t) = Ann (process fv e) (process fv t)
@@ -67,12 +67,12 @@ checkDecls :: [Decl] -> Either Doc [(Exp, Exp, Exp)]
 checkDecls a =
   let (tyEnv, tydef) = makeTyEnv' a
       tyEnv' = map (\ (x, t) -> (x, normalizeTy t tydef)) tyEnv
-      funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d, f)) defs |
-                          (FunDecl (Var f) t defs) <- a]
-  in mapM (\ (t, e, f) ->
+      funcDefs = concat [map (\(pats, d) -> (t, makeLam pats d, f, p)) defs |
+                          (FunDecl (Var f p) t defs) <- a]
+  in mapM (\ (t, e, f, p) ->
               let t' = normalizeTy t tydef in 
                 do{(e', vars) <- typeCheck f tyEnv' (t', e);
-                   return (Var f, t', process vars e')
+                   return (Var f p, t', process vars e')
                 })
      funcDefs
 
@@ -116,7 +116,7 @@ patternVars p i =
   let fvs = freeVars p
       j = (i+(length fvs))-1
       ns = [i..j]
-      vars = map (\ n -> Var $ "y"++show n++"#") ns
+      vars = map (\ n -> Var ("y"++show n++"#") undefined) ns
   in (zip fvs vars, j+1)
     
 
@@ -128,17 +128,17 @@ makePatEnv (x:xs) i =
   in (env:res, n)
 
 
-makeLvars ((env, Var y, Var x, e):xs) n = (Var y, n):makeLvars xs n
-makeLvars ((env, Var y, p, e):xs) n =
+makeLvars ((env, Var y p1, Var x _, e):xs) n = (Var y p1, n):makeLvars xs n
+makeLvars ((env, Var y p1, p, e):xs) n =
   let r = map (\(u, v) -> (v, n)) env
-  in r ++ (Var y,n):makeLvars xs n
-makeLvars ((env, t, Var x, e):xs) n = makeLvars xs n
+  in r ++ (Var y p1,n):makeLvars xs n
+makeLvars ((env, t, Var x _, e):xs) n = makeLvars xs n
 makeLvars [] n = []
 
 
-makePats ((t, Var x, e):xs) i =
+makePats ((t, Var x p1, e):xs) i =
   let (ps, j) = makePats xs i
-  in (([(x, t)], t, Var x, e):ps, j)
+  in (([(x, t)], t, Var x p1, e):ps, j)
     
 makePats ((t, p, e):xs) i =
   let (env, j) = patternVars p i
@@ -147,16 +147,16 @@ makePats ((t, p, e):xs) i =
 makePats [] i = ([], i)
 
 annotate l = map ann l 
-ann (Ann (Var x) t, e) = (Just t, (Var x), e)
+ann (Ann (Var x p) t, e) = (Just t, (Var x p), e)
 ann (p, e) = (Nothing, p, e)
 
 
-withVars ((Just t, (Var x), e):xs) i =
+withVars ((Just t, (Var x p1), e):xs) i =
   let (ps, j) = withVars xs i
-  in ((t, (Var x), e):ps, j)
+  in ((t, (Var x p1), e):ps, j)
 withVars ((Nothing, p, e):xs) i =
   let (ps, j) = withVars xs (i+1)
-  in ((Var $ "y"++show i++"#", p, e):ps, j)
+  in ((Var ("y"++show i++"#") undefined, p, e):ps, j)
 withVars [] i = ([], i)
 
 
@@ -216,8 +216,8 @@ replaceL 0 0 ys ((p,e):alts) r = ((replace p ys r), e):alts
 replaceL 0 1 ys ((p,e):alts) r = (p, (replace e ys r)):alts
 replaceL y y' ys (a:alts) r | y > 0 = a : replaceL (y-1) y' ys alts r
 
-isSingle (Var _) = True
-isSingle (Const _) = True
+isSingle (Var _ _) = True
+isSingle (Const _ _) = True
 isSingle _ = False
 
 stream1 = 1 : stream1
@@ -237,42 +237,48 @@ applyS :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)]
 applyS sub l = applyS' sub l []
   where applyS' :: [(Name, Exp)] -> [(Exp, Int)] -> [(Exp, Int)] -> [(Exp, Int)]
         applyS' sub [] store = store           
-        applyS' sub (((Const x), n):xs) store = ((Const x), n): applyS' sub xs store
-        applyS' sub a@(((Var x), n):xs) store =
+        applyS' sub (((Const x p1), n):xs) store = ((Const x p1), n): applyS' sub xs store
+        applyS' sub a@(((Var x p1), n):xs) store =
           case lookup x sub of
-            Nothing -> applyS' sub xs (((Var x), n):store)
+            Nothing -> applyS' sub xs (((Var x p1), n):store)
             Just e ->
               let fvs = freeVars e
-                  vars = [ x | ((Var x), _) <- (a ++ store)]
+                  vars = [ x | ((Var x _), _) <- (a ++ store)]
                   extra = [ y | y <- fvs, not $ y `elem` vars]
                   (store', n') = updateS fvs store n
                   (xs', n'') = updateS fvs xs n'
-                  store'' = (map (\ x -> (Var x, n'')) extra) ++ store'
+                  store'' = (map (\ x -> (Var x undefined, n'')) extra) ++ store'
               in applyS' sub xs' store''
-        updateS fvs ((Const x, v):l) n =
+        updateS fvs ((Const x p1, v):l) n =
           let (res, n') = updateS fvs l n
-          in ((Const x, v):res, n')
-        updateS fvs ((Var x, v):l) n =
+          in ((Const x p1, v):res, n')
+        updateS fvs ((Var x p1, v):l) n =
           if x `elem` fvs
           then let n' = min n v
                    (res, n'') = updateS fvs l n'
-               in ((Var x, n''):res, n'')
+               in ((Var x p1, n''):res, n'')
           else let (res, n'') = updateS fvs l n
-               in ((Var x, v) : res, n'')
+               in ((Var x p1, v) : res, n'')
         updateS fvs [] n = ([], n)
 
+
+mylookup x ((Var y _, n):xs) | x == y = Just n
+                             | otherwise = mylookup x xs
+mylookup x ((Const y _, n):xs) | x == y = Just n
+                               | otherwise = mylookup x xs
+mylookup x [] = Nothing
 
 scopeCheck :: [(Exp, Int)] -> [(Name, Exp)] -> Bool
 -- scopeCheck state g | trace ("scopeCheck " ++show ("hi") ++"\n") False = undefined
 scopeCheck lvars [] = True 
 scopeCheck lvars ((x, e):xs) =
-  case lookup (Var x) lvars of
+  case mylookup x lvars of
     Nothing -> scopeCheck lvars xs
     Just n ->
       let evars = eigenVar e
       in checkEigen evars lvars n && scopeCheck lvars xs
   where checkEigen (y:ys) lvars n =
-          case lookup (Const y) lvars of
+          case mylookup y lvars of
             Nothing -> False
             Just n' -> n' < n && checkEigen ys lvars n
         checkEigen [] lvars n = True
@@ -313,8 +319,8 @@ getValue xs = (maximum $ map snd xs) + 1
 -- TLDR: arranging subgoals is basically a black magic
 -- measure state | trace ("measure " ++show (state) ++"\n") False = undefined
 measure :: Exp -> Int
-measure (Var _) = 0
-measure (Const _) = 1
+measure (Var _ _) = 0
+measure (Const _ _) = 1
 measure (Imply a b) = (measure a) + (measure b) + 1
 measure (Forall a b) = measure b
 measure (App a b) = 1
@@ -371,7 +377,7 @@ transit (Res fun pf
   let (vars, imp) = getVars goal
       lv = length vars
       absNames = zipWith (\ x y -> x ++ show y ++ "#") vars [i..]
-      absNames' = map Const absNames
+      absNames' = map (\ x -> Const x undefined) absNames
       absVars = zip absNames' [getValue lvars ..]
       sub = zip vars absNames'
       imp' = apply (Subst sub) imp
@@ -433,12 +439,12 @@ transit (Res fun pf
       len = length alts
       n = getValue lvars
       (thetas, j) = makePatEnv pats (i+1)
-      newlvars = (Var y, n) : map (\x -> (x, n)) (map snd $ concat thetas)
+      newlvars = (Var y undefined, n) : map (\x -> (x, n)) (map snd $ concat thetas)
       lvars' = lvars++newlvars
       posLeft =  map (\ p -> pos++[1, p, 0]) [0..(len-1)]
       posRight = map (\ p -> pos++[1, p, 1]) [0..(len-1)]
       leftEnv = map (\(po, (p, th)) ->
-                        (Phi po (Just (Var y))
+                        (Phi po (Just (Var y undefined))
                           (Just p) (th++gamma) lvars')) 
                 (zip posLeft (zip pats thetas))
       rightEnv = map (\(po, (e', th)) ->
@@ -446,8 +452,8 @@ transit (Res fun pf
                            (Just e') (th++gamma) lvars')) 
                  (zip posRight (zip brExps thetas))
       altsEnv =  leftEnv ++ rightEnv
-      newEnv = (Phi (pos++[0]) (Just (Var y)) (Just e) gamma lvars'):altsEnv
-      newCase = Case (Ann (Var y) (Var y)) $ replicate len ((Var y), goal) 
+      newEnv = (Phi (pos++[0]) (Just (Var y undefined)) (Just e) gamma lvars'):altsEnv
+      newCase = Case (Ann (Var y undefined) (Var y undefined)) $ replicate len ((Var y undefined), goal) 
       pf' = replace pf pos newCase
   in [(Res fun pf' (newEnv++phi) Nothing j)]
 
@@ -530,7 +536,7 @@ transit (Res fun pf
           let (vars, imp) = getVars goal
               lv = length vars
               absNames = zipWith (\ x y -> x ++ show y ++ "#") vars [i..]
-              absNames' = map Const absNames
+              absNames' = map (\ x -> Const x undefined) absNames
               absVars = zip absNames' [getValue lvars ..]
               sub = zip vars absNames'
               imp' = apply (Subst sub) imp
@@ -543,7 +549,7 @@ transit (Res fun pf
               lvars1 = lvars++absVars
               (vars2, imp2) = getVars f
               fresh = map (\ (v, j) -> v ++ show j ++ "#") $ zip vars2 [i1..]
-              fresh' = map Var fresh
+              fresh' = map (\ x -> Var x undefined) fresh
               renaming = zip vars2 fresh'
               imp2' = apply (Subst renaming) imp2
               i' = i1 + length vars
@@ -563,7 +569,7 @@ transit (Res fun pf
                      let pf' = normalize $ apply (Subst sub') pf1
                          np = ([ s | r <- fresh,
                                       let s = case lookup r sub' of
-                                                Nothing -> (Var r)
+                                                Nothing -> (Var r undefined)
                                                 Just t -> t])
                          contm = foldl' (\ z x -> TApp z x) exp np     
                          pf'' = replace pf' pos1 contm
@@ -598,8 +604,8 @@ transit (Res fun pf
              (Just exp) gamma lvars):phi)
           Nothing i) = 
   case flatten exp of
-    (Var v) : xs -> handle v xs
-    (Const v) : xs -> handle v xs
+    (Var v p1) : xs -> handle v p1 xs
+    (Const v p1) : xs -> handle v p1 xs
     a ->
       let m' = Just $ text "when checking function" <+> text fun $$
                (text "need more information to check expression:" <+> disp exp) $$
@@ -611,7 +617,7 @@ transit (Res fun pf
       in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
 
   where
-    handle v xs =
+    handle v p1 xs =
       case lookup v gamma of
         Nothing ->
           let m' = Just $ text "can't find" <+> text v
@@ -621,13 +627,13 @@ transit (Res fun pf
           let (vars, head, body) = separate f
               i' = i + length vars
               fresh = map (\ (v, j) -> v ++ show j ++ "#") $ zip vars [i..]
-              renaming = zip vars (map Var fresh)
+              renaming = zip vars (map (\ x -> Var x undefined) fresh)
               body'' = map (apply (Subst renaming)) body
               head'' = apply (Subst renaming) head
               n = length xs
               l = length body
               j = if l <= n then i' + (n-l) else i'
-              glVars = map (\ i -> Var $ "y"++show i++"#") [i'..j-1]
+              glVars = map (\ i -> Var ("y"++show i++"#") undefined) [i'..j-1]
               goal' = reImp glVars goal
               newHead = if n < l then reImp (drop n body'') head'' else head''
               ss = runMatch newHead goal'
@@ -653,14 +659,14 @@ transit (Res fun pf
                           body1 = body' ++ (map (apply (Subst sub)) glVars)
                           np = ([ s | r <- fresh,
                                   let s = case lookup r sub of
-                                            Nothing -> (Var r)
+                                            Nothing -> (Var r undefined)
                                             Just t -> t])
                           va = getValue lvars     
                           lvars' = applyS sub $ lvars ++
-                                   (map (\ x -> (Var x, va)) fresh) ++
+                                   (map (\ x -> (Var x undefined, va)) fresh) ++
                                    map (\x -> (x, va)) glVars
                           name = if isUpper $ Data.List.head v
-                                 then Const v else Var v
+                                 then Const v p1 else Var v p1
                           contm = foldl' (\ z x -> App z x)
                                   (foldl' (\ z x -> TApp z x) name np)
                                   body1
@@ -722,6 +728,6 @@ ersm init = let s = concat $ map transit init
           and $ map (\p -> currentGoal p == Nothing && currentProg p == Nothing) phi 
         success _ = False
         genVars phi = concat $ map (\(Phi _ _ _ _ lvars) -> genVars' lvars) phi
-        genVars' ((Var x, n):xs) = x : genVars' xs
+        genVars' ((Var x _, n):xs) = x : genVars' xs
         genVars' (x:xs) = genVars' xs
         genVars' [] = []

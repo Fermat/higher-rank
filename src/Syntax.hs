@@ -87,11 +87,11 @@ isAtom _ = False
 isVar (Var _ _) = True
 isVar _ = False
 
--- erase (Const x _) = Const x
--- erase (Var x) = Var x
--- erase (Abs x e) = erase e
--- erase (TApp e t) = erase e
--- erase (App a1 a2) = App (erase a1) (erase a2)
+erase (Const x p) = Const x p
+erase (Var x p) = Var x p
+erase (Abs x e) = erase e
+erase (TApp e t) = erase e
+erase (App a1 a2) = App (erase a1) (erase a2)
 
 getName (Const x _) = x
 getName (Var x _) = x
