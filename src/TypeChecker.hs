@@ -341,8 +341,9 @@ arrange l = sortBy sortGT l
 
 
 
-scopeError fun imp goal f y sub lvars pf exp =
+scopeError fun imp goal f y sub lvars pf exp pos =
   text "when checking function" <+> text fun $$
+  text "at position" <+> disp pos $$
   text "scope error when matching" <+> disp imp $$
   text "against"<+> disp (goal)$$
   (nest 2 (text "when applying" <+> text y <+> text ":"
@@ -357,8 +358,9 @@ scopeError fun imp goal f y sub lvars pf exp =
   (nest 2 $ text "the current mixed proof term:" $$
    nest 2 (disp pf))
 
-matchError fun imp goal y f pf exp =
+matchError fun imp goal y f pf exp pos =
   text "when type checking the function" <+> text fun $$
+  text "at position" <+> disp pos $$
   text "can't match" <+> disp imp $$
   text "against" <+> disp goal $$
   (nest 2 (text "when applying" <+>text y <+> text ":"
@@ -492,9 +494,10 @@ transit (Res fun pf
           Nothing i)
   | isAtom exp =
       let y = getName exp
+          ypos = getPos exp
       in case lookup y gamma of
         Nothing ->
-          let m' = Just $ text "can't find" <+> text y
+          let m' = Just $ disp ypos <> text ":"<+> text "can't find" <+> text y
                    <+> text "in the environment" 
           in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
         Just f | isVar f || isVar goal ->
@@ -517,7 +520,7 @@ transit (Res fun pf
                               Nothing i)
                    Left m' ->
                      let mess = text "globally, " <+>
-                                scopeError fun f goal f y sub lvars pf exp
+                                scopeError fun f goal f y sub lvars pf exp ypos
                          m1 = m' $$ nest 2 mess
                      in [Res fun pf
                           ((Phi pos
@@ -525,7 +528,7 @@ transit (Res fun pf
                              (Just exp) gamma lvars):phi)
                           (Just m1) i]                         
                              
-            else let mess = scopeError fun f goal f y sub lvars pf exp
+            else let mess = scopeError fun f goal f y sub lvars pf exp ypos
                  in [Res fun pf
                       ((Phi pos
                         (Just goal)
@@ -556,7 +559,7 @@ transit (Res fun pf
               ss = runMatch imp2' goal1
           in case ss of
               [] ->
-                let m' = matchError fun imp2' goal1 y f pf exp
+                let m' = matchError fun imp2' goal1 y f pf exp ypos
                 in [(Res fun pf
                       ((Phi pos
                          (Just goal)
@@ -585,13 +588,13 @@ transit (Res fun pf
                                      Nothing i')
                           Left m' ->
                             let mess = text "globally, " <+>
-                                       scopeError fun imp2' goal1 f y sub' lvars pf exp
+                                       scopeError fun imp2' goal1 f y sub' lvars pf exp ypos
                                 m1 = m' $$ nest 2 mess 
                             in [Res fun pf
                                  ((Phi pos (Just goal)
                                     (Just exp) gamma lvars):phi)
                                  (Just m1) i]
-                     else let mess = scopeError fun imp2' goal1 f y sub' lvars1 pf exp
+                     else let mess = scopeError fun imp2' goal1 f y sub' lvars1 pf exp ypos
                           in [Res fun pf
                                ((Phi pos (Just goal)
                                   (Just exp) gamma lvars):phi)
@@ -620,7 +623,7 @@ transit (Res fun pf
     handle v p1 xs =
       case lookup v gamma of
         Nothing ->
-          let m' = Just $ text "can't find" <+> text v
+          let m' = Just $ disp p1 <> text ":" <+>text "can't find" <+> text v
                    <+> text "in the environment" $$ text "when checking function" <+> text fun
           in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
         Just f ->
@@ -639,7 +642,7 @@ transit (Res fun pf
               ss = runMatch newHead goal'
           in case ss of
                [] ->
-                 let m' = matchError fun newHead goal' v f pf exp
+                 let m' = matchError fun newHead goal' v f pf exp p1
                  in [(Res fun pf
                        ((Phi pos
                           (Just goal)
@@ -691,14 +694,14 @@ transit (Res fun pf
                              return $ Res fun pf'' (highlow'++p) Nothing j
                            Left m' ->
                              let mess = text "globally," <+>
-                                        scopeError fun newHead goal' f v sub lvars pf exp
+                                        scopeError fun newHead goal' f v sub lvars pf exp p1
                                  m1 = m' $$ nest 2 mess 
                              in [Res fun pf
                                   ((Phi pos
                                      (Just goal)
                                      (Just exp) gamma lvars):phi)
                                   (Just m1) i]
-                      else let mess = scopeError fun newHead goal' f v sub lvars pf exp
+                      else let mess = scopeError fun newHead goal' f v sub lvars pf exp p1
                            in [Res fun pf
                                 ((Phi pos
                                    (Just goal)

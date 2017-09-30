@@ -148,16 +148,16 @@ funDecl = do
             
 var :: Parser Exp
 var = do
+  p <- getPosition
   n <- identifier
   when (isUpper (head n)) $ parserFail "expected to begin with lowercase letter"
-  p <- getPosition
   return (Var n p)
 
 con :: Parser Exp
 con = do
+  p <- getPosition
   n <- identifier  
   when (isLower (head n)) $ parserFail "expected to begin with uppercase letter"
-  p <- getPosition
   return (Const n p)
 
 star :: Parser Exp

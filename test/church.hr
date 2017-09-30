@@ -2,7 +2,7 @@ module church where
 
 type Nat :: * = forall x . (x -> x) -> x -> x
 
-zero :: Nat
+zero :: Nat -> Nat
 zero = \ s z -> z
 -- zero = \\ x . \ s : x -> x . \ z : x . z
 succ :: Nat -> Nat

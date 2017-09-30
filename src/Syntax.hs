@@ -97,6 +97,11 @@ getName (Const x _) = x
 getName (Var x _) = x
 getName a = error ("from getName: " ++ show a)
 
+getPos (Const _ x) = x
+getPos (Var _ x) = x
+getPos a = error ("from getPos: " ++ show a)
+
+
 newtype Subst = Subst [(String, Exp)] deriving (Show, Eq)
 
 apply' :: Subst -> Maybe Exp -> Maybe Exp
