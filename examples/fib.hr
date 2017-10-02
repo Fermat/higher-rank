@@ -24,7 +24,7 @@ primitive k ::  forall p x y . p (G (F Z x (S y)) (F x y (S (S Z)))) -> p (F Z (
 g1 :: forall p qa qb f . (forall p x y . p (qa (f Z x (S y)) x y) -> p (f Z (S x) y)) -> 
                        (forall p y . p (qb (f Z y (S (S Z))) y) -> p (f Z (S Z) y)) ->
                        p (f Z (S Z) (S Z)) 
-g1 a1 a2 = a2 (g1 a1 (\ c -> a2 (a1 c)))
+g1 a1 a2 = a2 (g1 (\ c -> a1 c) (\ c -> a2 (a1 c)))
 
--- h1 :: F Z (S Z) (S Z)
--- h1 = g1 (\ c -> k c) (\ c -> k c)
+h1 :: F Z (S Z) (S Z)
+h1 = g1 k k -- (\ c -> k c) (\ c -> k c)
