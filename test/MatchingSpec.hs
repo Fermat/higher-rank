@@ -84,4 +84,34 @@ test8 = map disp $ runMatch exp22 exp23
 exp26 = Imply (App (Var "p" dummyPos) (Const "Bot" dummyPos)) (App (Var "p" dummyPos) (Const "N" dummyPos))
 exp27 = Imply (App (Const "F" dummyPos) (Const "Bot" dummyPos)) (App (Const "F" dummyPos) (Const "N" dummyPos))
 
+exp28 = Lambda (Var "m1" dummyPos)
+        (Lambda (Var "m2" dummyPos)
+         (Lambda (Var "m3" dummyPos)
+          (App (App (App (Const "F" dummyPos) (Var "m1" dummyPos)) (Var "m2" dummyPos)) (Var "m3" dummyPos))))
+          
 test9 = map disp $ runMatch exp26 exp27
+test10 = eta exp28
+
+exp29 = App (Var "p7" dummyPos) (App (App (Const "G" dummyPos) (App (App (App (Const "F" dummyPos) (Const "Z" dummyPos)) (Var "x8" dummyPos)) (App (Const "S" dummyPos) (Var "y9" dummyPos)))) (App (App (App (Const "F" dummyPos) (Var "x8" dummyPos)) (Var "y9" dummyPos)) (App (Const "S" dummyPos) (App (Const "S" dummyPos) (Const "Z" dummyPos)))))
+exp29' = App (Var "p7" dummyPos) (Const "P" dummyPos)
+exp30' = App (Const "P4" dummyPos) (App (Var "p" dummyPos) (Const "P" dummyPos))
+exp30 = App (Const "P4" dummyPos) (App (App (App (Var "qa1" dummyPos) (App (App (App (Const "F" dummyPos) (Const "Z" dummyPos)) (Const "X5" dummyPos)) (App (Const "S" dummyPos) (Const "Y6" dummyPos)))) (Const "X5" dummyPos)) (Const "Y6" dummyPos))
+
+test11 = map disp $ runMatch exp29 exp30
+test11' = map disp $ runMatch exp29' exp30'
+exp31 = Imply (App (Var "p7" dummyPos) exp29) (App (Var "p7" dummyPos) (App (App (App (Const "F" dummyPos) (Const "Z" dummyPos)) (App (Const "S" dummyPos) (Var "x8" dummyPos))) (Var "y9" dummyPos)))
+
+exp32 = Imply (App (Const "P4" dummyPos) exp30) (App (Const "P4" dummyPos) (App (App (App (Const "F" dummyPos) (Const "Z" dummyPos)) (App (Const "S" dummyPos) (Const "X5" dummyPos))) (Const "Y6" dummyPos)))
+
+test12 = map disp $ runMatch exp31 exp32
+  -- can't match p7# (G (F Z x8# (S y9#)) (F x8# y9# (S (S Z))))
+  --             ->
+  --               p7# (F Z (S x8#) y9#)
+  -- against [p4#] (qa1# (F Z [x5#] (S [y6#])) [x5#] [y6#])
+  --         ->
+  --           [p4#] (F Z (S [x5#]) [y6#])
+  --   when applying k : forall p x y .
+  --                       p (G (F Z x (S y)) (F x y (S (S Z)))) -> p (F Z (S x) y)
+  --   current expression: k
+  --   current mixed proof term
+  --     g1 @(\ x1# . x1#) @qa1# @qb2# @F

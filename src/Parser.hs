@@ -23,6 +23,9 @@ parseModule :: String -> String -> Either P.ParseError [Decl]
 parseModule srcName cnts = 
  runIndent $ runParserT decl initialParserState srcName cnts
 
+parseExp :: String -> Either P.ParseError Exp
+parseExp s = runIndent $ runParserT (parens term) initialParserState [] s
+
 type Parser a = IndentParser String ParserState a
 
 data ParserState =

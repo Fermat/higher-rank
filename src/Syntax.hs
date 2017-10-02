@@ -138,7 +138,7 @@ minus (Subst sub) fv = Subst $ [ (x, e) | (x, e) <- sub, not $ x `elem` fv]
 
 extend :: Subst -> Subst -> Subst
 extend (Subst s1) (Subst s2) =
-  Subst $ [(x, eta $ normalize $ apply (Subst s1) e) | (x, e) <- s2] ++ s1
+  Subst $ [(x, normalize $ apply (Subst s1) e) | (x, e) <- s2] ++ s1
 
 eta (Lambda (Var x p) t) =
   case eta t of
@@ -152,7 +152,7 @@ eta a = a
 
 -- normalize a type/mixed term expression without type definitions 
 normalize :: Exp -> Exp
-normalize t = norm [] t
+normalize t = eta $ norm [] t
 
 norm g Star = Star
 norm g (Var a p) = Var a p
@@ -177,7 +177,7 @@ norm g (Let alts e) = Let alts' (norm g e)
   where alts' = map (\(p, exp) -> (norm g p, norm g exp)) alts
 
 -- normalizeTy t g | trace ("normalizeTy " ++show ("hi") ++"\n") False = undefined
-normalizeTy t g = norm g t
+normalizeTy t g = eta $ norm g t
 
 type GVar a = State Int a
 

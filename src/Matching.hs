@@ -38,12 +38,12 @@ invert (App x y) = App (invert x) (invert y)
 runMatch e1 e2 =
   let states = match ([(convert e1, convert e2)], [], Subst [], 0)
       fvs = freeVar e1 `S.union` freeVar e2
-      subs = [sub | ([], vars, sub, _) <- states, apart sub,  agree sub, apartEV sub vars] 
-      subs' = [ s'  | Subst s <- subs, 
+      subs = [sub | ([], vars, sub, _) <- states , apart sub, agree sub, apartEV sub vars ] 
+      subs' = [ Subst s'  | Subst s <- subs, 
                 let s' = [(x, invert e) | (x, e) <- s, x `S.member` fvs]]
-      subs'' = nub $ map S.fromList subs'
-      subs''' = map (Subst . S.toList) subs'' 
-  in subs'''
+      -- subs'' = nub $ map S.fromList subs'
+      -- subs''' = map (Subst . S.toList) subs'' 
+  in subs'
 
 apartEV :: Subst -> [Name] -> Bool
 apartEV (Subst sub) vars =
@@ -65,6 +65,7 @@ agree (Subst s) =
 type MatchState = ([(Exp, Exp)], [Name], Subst, Int)
 
 match :: MatchState -> [MatchState]
+-- match (eqs, vars, sub, i) | trace ("match " ++show (disp eqs) ++"\n") False = undefined
 match ((Star, Star):xs, vars, sub, i) = match (xs, vars, sub, i)
 
 match ((Var a p, Var b p'):xs, vars, sub, i) | b == a = match (xs, vars, sub, i)
