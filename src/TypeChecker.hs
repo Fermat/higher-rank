@@ -288,7 +288,7 @@ applyPhi :: [(Name, Exp)] -> [Phi] -> Either Doc [Phi]
 applyPhi sub ls =
   let f = [(scopeCheck lvars sub, l) | l@(Phi p g e env lvars) <- ls]
       ls' = map (\(Phi p g e env lvars) ->
-                    (Phi p (normalize' $ apply' (Subst sub) g)
+                    (Phi p (fmap normalize $ (fmap . apply) (Subst sub) g)
                       e 
                       (map (\ (x, t) -> (x, normalize $ apply (Subst sub) t))
                         env)

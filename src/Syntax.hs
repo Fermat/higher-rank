@@ -38,9 +38,9 @@ data Decl = DataDecl Exp Exp [(Exp, Exp)]
 
 
 dummyPos = initialPos "dummy"
+
 -- free variable of a type/kind exp
 freeVars = S.toList . freeVar 
-
 freeVar (Var x _) =  S.insert x S.empty
 freeVar (Const x _) = S.empty
 freeVar Star = S.empty
@@ -48,6 +48,7 @@ freeVar (App f1 f2) = (freeVar f1) `S.union` (freeVar f2)
 freeVar (Forall x f) = S.delete x (freeVar f)
 freeVar (Lambda p f) = freeVar f `S.difference` freeVar p
 freeVar (Imply b h) = freeVar b `S.union` freeVar h
+
 -- eigen variable of a type exp  
 eigenVar = S.toList . eigen
 eigen Star = S.empty
@@ -57,7 +58,6 @@ eigen (App f1 f2) = (eigen f1) `S.union` (eigen f2)
 eigen (Forall x f) = S.delete x (eigen f)
 eigen (Imply b h) = eigen b `S.union` eigen h
 eigen (Lambda p f) = eigen f 
-
 
 flatten :: Exp -> [Exp]
 flatten (App f1 f2) = flatten f1 ++ [f2]
@@ -104,8 +104,6 @@ getPos a = error ("from getPos: " ++ show a)
 
 newtype Subst = Subst [(String, Exp)] deriving (Show, Eq)
 
-apply' :: Subst -> Maybe Exp -> Maybe Exp
-apply' s = fmap $ apply s
 
 -- applying a substitution to a type or mixed type/term expression
 -- the substitution is blind, i.e. no renaming of bound variables
@@ -140,72 +138,46 @@ minus (Subst sub) fv = Subst $ [ (x, e) | (x, e) <- sub, not $ x `elem` fv]
 
 extend :: Subst -> Subst -> Subst
 extend (Subst s1) (Subst s2) =
-  Subst $ [(x, normalize $ apply (Subst s1) e) | (x, e) <- s2] ++ s1
+  Subst $ [(x, eta $ normalize $ apply (Subst s1) e) | (x, e) <- s2] ++ s1
 
-normalize' :: Maybe Exp -> Maybe Exp
-normalize' = fmap normalize
+eta (Lambda (Var x p) t) =
+  case eta t of
+    App t' e' | isVar e' && getName e' == x -> 
+                let fv = freeVars t' in
+                  if not (x `elem` fv) then t'
+                  else Lambda (Var x p) (App t' e')
+    c -> Lambda (Var x p) c
+eta (App e1 e2) = App (eta e1) (eta e2)
+eta a = a
 
 -- normalize a type/mixed term expression without type definitions 
 normalize :: Exp -> Exp
-normalize t = let t1 = norm t
-                  t2 = norm t1
-              in if t1 == t2 then t1 else normalize t2 
+normalize t = norm [] t
 
-norm Star = Star
-norm (Var a p) = Var a p
-norm (Const a p) = Const a p
-norm (Ann a t) = Ann (norm a) (norm t)
-norm (Lambda (Var x p) (App t e)) | isVar e = if getName e == x then norm t
-                                              else Lambda (Var x p) (norm $ App t e)
-norm (Lambda x t) = Lambda x (norm t)
-norm (Abs x t) = Abs x (norm t)
-norm (TApp t1 t2) = TApp (norm t1) (norm t2)
-norm (App (Lambda (Var x _) t') t) = apply (Subst [(x, t)]) t'
-norm (App (Var x p) t) = App (Var x p) (norm t)
-norm (App (Const x p) t) = App (Const x p) (norm t)
-norm (App t' t) = 
-  case (App (norm t') (norm t)) of
-    a@(App (Lambda x t') t) -> norm a
+norm g Star = Star
+norm g (Var a p) = Var a p
+norm g (Const a p) =
+  case lookup a g of
+    Nothing -> Const a p
+    Just b -> norm g b
+norm g (Ann a t) = Ann (norm g a) (norm g t)
+norm g (Lambda x t) =  Lambda x (norm g t)
+norm g (Abs x t) = Abs x (norm g t)
+norm g (TApp t1 t2) = TApp (norm g t1) (norm g t2)
+norm g (App (Lambda (Var x p) t') t) = norm g $ runSubst t (Var x p) t'
+norm g (App t' t) = 
+  case (App (norm g t') (norm g t)) of
+    a@(App (Lambda x t') t) -> norm g a
     b -> b
-norm (Imply t t') = Imply (norm t) (norm t')
-norm (Forall x t) = Forall x (norm t)
-norm (Case e alts) = Case (norm e) alts'
-  where alts' = map (\(p, exp) -> (norm p, norm exp)) alts
-norm (Let alts e) = Let alts' (norm e) 
-  where alts' = map (\(p, exp) -> (norm p, norm exp)) alts
+norm g (Imply t t') = Imply (norm g t) (norm g t')
+norm g (Forall x t) = Forall x (norm g t)
+norm g (Case e alts) = Case (norm g e) alts'
+  where alts' = map (\(p, exp) -> (norm g p, norm g exp)) alts
+norm g (Let alts e) = Let alts' (norm g e) 
+  where alts' = map (\(p, exp) -> (norm g p, norm g exp)) alts
 
 -- normalizeTy t g | trace ("normalizeTy " ++show ("hi") ++"\n") False = undefined
-normalizeTy t g = normalizeT $ normTy t g
-
-normalizeT :: Exp -> Exp
--- normalizeT t | trace ("normalizeT " ++show ("hi") ++"\n") False = undefined
-normalizeT t = let t1 = normalizeTypeDef t
-                   t2 = normalizeTypeDef t1
-               in if t1 `alphaEq` t2 then t1 else normalizeT t2 
--- normalizeTypeDef t | trace ("normalizeTypeDef " ++show ("hi") ++"\n") False = undefined
-normalizeTypeDef (Var a p) = Var a p
-normalizeTypeDef (Const a p) = Const a p
-normalizeTypeDef (Lambda x t) = Lambda x (normalizeTypeDef t)
-normalizeTypeDef (App (Lambda (Var x p) t') t) = runSubst t (Var x p) t'
-normalizeTypeDef (App (Var x p) t) = App (Var x p) (normalizeTypeDef t)
-normalizeTypeDef (App (Const x p) t) = App (Const x p) (normalizeTypeDef t)
-normalizeTypeDef (App t' t) = 
-  case (App (normalizeTypeDef t') (normalizeTypeDef t)) of
-    a@(App (Lambda x t') t) -> normalizeTypeDef a
-    b -> b
-normalizeTypeDef (Imply t t') = Imply (normalizeTypeDef t) (normalizeTypeDef t')
-normalizeTypeDef (Forall x t) = Forall x (normalizeTypeDef t)
--- normTy t g | trace ("normTy " ++show ("hi") ++"\n") False = undefined 
-normTy (Var a p) g = Var a p
-normTy (Const a p) g =
-  case lookup a g of
-    Nothing -> (Const a p)
-    Just b -> normTy b g
-normTy (Lambda x t) g = Lambda x (normTy t g)
-normTy (Abs x t) g = Abs x (normTy t g)
-normTy (App t' t) g = (App (normTy t' g) (normTy t g))
-normTy (Imply t t') g = Imply (normTy t g) (normTy t' g)
-normTy (Forall x t) g = Forall x (normTy t g)
+normalizeTy t g = norm g t
 
 type GVar a = State Int a
 
@@ -227,7 +199,6 @@ subst s (Var x p) (App f1 f2) = do
   c1 <- subst s (Var x p) f1
   c2 <- subst s (Var x p) f2
   return $ App c1 c2
-
 
 subst s (Var x p) (Forall a f) =
   if x == a || not (x `elem` freeVars f) then return $ Forall a f
@@ -252,8 +223,6 @@ subst s (Var x p1) (Lambda (Var a p2) f) =
          modify (+1)
          c1 <- subst (Var (a++ show n++ "#") p2) (Var a p2) f
          subst s (Var x p1) (Lambda (Var (a ++ show n++"#") p2) c1)         
-
-
 
 data Nameless = V Int
               | C Name
