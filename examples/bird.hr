@@ -1,0 +1,115 @@
+module Bird where
+--------------------- prelude -------------
+prog infixl 6 ++ 
+prog infixr 9 .
+
+
+data List :: * -> * where
+ Nil :: forall a . List a 
+ Cons :: forall a . a -> List a -> List a
+
+(++) :: forall a . List a -> List a -> List a
+(++) Nil l2 = l2
+(++) (Cons a as) l2 = Cons a (as ++ l2)
+
+(.) :: forall p q r . (q -> r) -> (p -> q) -> p -> r
+(.) f g x = f (g x)
+
+
+data Char :: * where
+  LL :: Char
+  L :: Char
+  R :: Char
+  Z :: Char
+  S :: Char
+  X :: Char
+
+----------------------
+
+data Incr :: * -> * where
+  Zero :: forall a . Incr a
+  Succ :: forall a . a -> Incr a
+
+data Term :: * -> * where
+     Var :: forall a . a -> Term a
+     App :: forall a . Term a -> Term a -> Term a
+     Lam :: forall a . Term (Incr a) -> Term a
+
+mapI :: forall a b . (a -> b) -> Incr a -> Incr b
+mapI f Zero = Zero
+mapI f (Succ x) = Succ (f x)
+
+mapT :: forall a b. (a -> b) -> Term a -> Term b
+mapT f (Var x) = Var (f x)
+mapT f (App t1 t2) = App (mapT f t1) (mapT f t2)
+mapT f (Lam t) = Lam (mapT (mapI f) t)
+
+
+  
+gfoldT :: forall m n b . (forall a. m a -> n a) -> (forall a. n a -> n a -> n a) ->
+       	    (forall a. n (Incr a) -> n a) -> (forall a. Incr (m a) -> m (Incr a)) ->
+	    	    Term (m b) -> n b
+gfoldT v a l k (Var x) = v x
+
+gfoldT v a l k (App p1 p2) = a (gfoldT v a l k p1) (gfoldT v a l k p2) 
+
+gfoldT v a l k (Lam t) = l (gfoldT v a l k ((mapT k) t))
+
+foldT :: forall n b . (forall a. a -> n a) -> (forall a. n a -> n a -> n a) ->
+      	   (forall a. n (Incr a) -> n a) -> Term b -> n b
+foldT v a l (Var x) = v x
+foldT v a l (App p1 p2) = a  (foldT v a l p1) (foldT v a l p2)
+foldT v a l (Lam t) = l (foldT v a l t)
+
+
+id :: forall a . a -> a
+id x = x
+
+showT :: Term (List Char) -> List Char
+showT = gfoldT id showP (\ x -> Cons LL x) showI
+
+
+joinT :: forall a . Term (Term a) -> Term a
+joinT x = gfoldT id App Lam distT x
+
+distT :: forall a . Incr (Term a) -> Term (Incr a)
+distT Zero = Var Zero
+distT (Succ x) = mapT Succ x
+
+helper :: List Char -> List Char
+helper = Cons LL
+
+showP :: List Char -> List Char -> List Char
+showP x y = app (app (app (app (Cons L Nil) x) (Cons X Nil)) y) (Cons R Nil)
+
+showI :: Incr (List Char) -> List Char
+showI Zero = Cons Z Nil
+showI (Succ x) = Cons S x
+
+data TermE :: * -> * where
+  VarE :: forall a . a -> TermE a
+  AppE :: forall a  . TermE a -> TermE a -> TermE a
+  LamE :: forall a . (TermE (Incr (TermE a))) -> TermE a
+
+mapE :: forall a b . (a -> b) -> TermE a -> TermE b
+mapE f (VarE x) = VarE  (f x)
+mapE f (AppE p1 p2) = AppE (mapE f p1) (mapE f p2)
+mapE f (LamE t) = LamE (mapE (mapI (mapE f)) t)
+
+
+gfoldE :: forall m n b . (forall a. m a -> n a) ->
+            (forall a. n a -> n a -> n a) -> (forall a. n (Incr (n a)) -> n a) ->
+	      (forall a. Incr a -> m (Incr a)) ->
+	         TermE (m b) -> n b
+gfoldE v a l k (VarE x) = v x
+gfoldE v a l k (AppE p1 p2) = a (gfoldE v a l k p1) (gfoldE v a l k p2)
+gfoldE v a l k (LamE t) = l (gfoldE v a l k (mapE (\ x -> k (mapI (gfoldE v a l k) x)) t))
+
+joinE :: forall a . TermE (TermE a) -> TermE a
+joinE x = gfoldE id AppE LamE VarE x
+
+cvtE :: forall a . TermE a -> Term a
+cvtE x = gfoldE Var App (\ x -> Lam (joinT (mapT distT x))) id x
+
+cvtBodyE :: forall a . TermE (Incr (TermE a)) -> Term (Incr a)
+cvtBodyE x = joinT (mapT distT (cvtE (mapE (mapI cvtE) x)))
