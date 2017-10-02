@@ -12,7 +12,7 @@ A prototype type checker for higher-rank, impredicative and second-order types.
 
 * Program syntax
 
-  basically haskell syntax, but more limited, please see files in examples/. 
+  basically haskell syntax, but much more limited, please see files in examples/. 
 
 * Behavior
 
@@ -20,4 +20,4 @@ A prototype type checker for higher-rank, impredicative and second-order types.
 
 * Output syntax
 
-  \\\\ for type level lambda abstraction, @T for type application, machine generated variables will be postfixed with \#.  
+  \\\\ for type abstraction, @T for type application, machine generated variables will be postfixed with \#.  
