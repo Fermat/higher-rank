@@ -20,4 +20,4 @@ A prototype type checker for higher-rank, impredicative and second-order types.
 
 * Output syntax
 
-  \\ for type level lambda abstraction, @T for type application. 
+  \\\\ for type level lambda abstraction, @T for type application, machine generated variables will be postfixed with \#.  
