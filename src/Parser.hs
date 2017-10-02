@@ -293,8 +293,8 @@ gottlobStyle = Token.LanguageDef
                 , Token.nestedComments = True
                 , Token.identStart     = letter
                 , Token.identLetter    = alphaNum <|> oneOf "_'"
-                , Token.opStart        = oneOf ":!#$%&*+.,/<=>?@\\^|-[]"
-                , Token.opLetter       = (oneOf ":!#$%&*+.,/<=>?@\\^|-[]") <|> alphaNum
+                , Token.opStart        = oneOf ":!#$%&*+.,/<=>?@\\^|-"
+                , Token.opLetter       = (oneOf ":!#$%&*+.,/<=>?@\\^|-") <|> alphaNum
                 , Token.caseSensitive  = True
                 , Token.reservedNames =
                   [
