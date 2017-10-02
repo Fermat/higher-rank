@@ -20,4 +20,8 @@ A prototype type checker for higher-rank, impredicative and second-order types.
 
 * Output syntax
 
-  \\\\ for type abstraction, @T for type application, machine generated variables will be postfixed with \#.  
+  \\\\ for type abstraction, @T for type application, machine generated variables will be postfixed with \#.
+
+* More information
+
+  please see author's website. 
