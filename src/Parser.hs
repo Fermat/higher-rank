@@ -105,7 +105,7 @@ progOperatorDecl = do
 primDecl :: Parser Decl
 primDecl = do
   reserved "primitive"
-  f <- var
+  f <- try var <|> opVar
   reservedOp "::"
   k <- ty
   return $ Prim f k
@@ -302,7 +302,7 @@ gottlobStyle = Token.LanguageDef
                 , Token.reservedNames =
                   [
                     "forall", "iota", "reduce", 
-                    "coind","use", "intros", "apply", "type",
+                    "coind","use", "intros", "type",
                     "by", "from", "in", "let", "simpCmp", "step",
                     "case", "of",
                     "data", 

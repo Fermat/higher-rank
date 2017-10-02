@@ -2,7 +2,8 @@ module Bird where
 --------------------- prelude -------------
 prog infixl 6 ++ 
 prog infixr 9 .
-
+prog infix 7 ==
+primitive (==) :: forall a . a -> a -> Bool
 
 data List :: * -> * where
  Nil :: forall a . List a 
@@ -18,6 +19,10 @@ data List :: * -> * where
 id :: forall a . a -> a
 id x = x
 
+data Bool :: * where
+  True :: Bool
+  False :: Bool
+
 data Char :: * where
   Lambda :: Char
   Z :: Char
@@ -26,13 +31,7 @@ data Char :: * where
   L :: Char
   R :: Char
   Space :: Char
--- data String :: * where
---   LParen :: String
---   RParen :: String
---   Space :: String
---   Z :: String
---   S :: String
---   Lambda :: String
+
 type String :: * = List Char
 
 lParen :: String
@@ -149,32 +148,49 @@ kfoldT' v a l k t = gfoldT v a l k t
 showT' :: Term String -> String
 showT' = kfoldT' id showP (\ x -> lambda ++ x) showI
 
-{-
+abstract :: forall a . a -> Term a -> Term a
+abstract x = Lam . mapT (match x)
+
+match :: forall a . a -> a -> Incr a
+match x y = case x == y of
+               True -> Zero
+	       False -> Succ y
+
+apply :: forall a . Term a -> Term (Incr a) -> Term a
+apply t = joinT . mapT (subst t . mapI Var)
+
+subst :: forall a . a -> Incr a -> a
+subst x Zero = x
+subst x (Succ y) = y
+
+
 data TermE :: * -> * where
   VarE :: forall a . a -> TermE a
-  AppE :: forall a  . TermE a -> TermE a -> TermE a
+  AppE :: forall a  . Pair (TermE a) -> TermE a
   LamE :: forall a . (TermE (Incr (TermE a))) -> TermE a
 
 mapE :: forall a b . (a -> b) -> TermE a -> TermE b
-mapE f (VarE x) = VarE  (f x)
-mapE f (AppE p1 p2) = AppE (mapE f p1) (mapE f p2)
-mapE f (LamE t) = LamE (mapE (mapI (mapE f)) t)
+mapE f (VarE x) = (VarE . f) x
+mapE f (AppE p) = (AppE . mapP (mapE f)) p
+mapE f (LamE t) = (LamE . mapE (mapI (mapE f))) t
 
 
 gfoldE :: forall m n b . (forall a. m a -> n a) ->
-            (forall a. n a -> n a -> n a) -> (forall a. n (Incr (n a)) -> n a) ->
-	      (forall a. Incr a -> m (Incr a)) ->
-	         TermE (m b) -> n b
+                            (forall a. Pair (n a) -> n a) ->
+			      (forall a. n (Incr (n a)) -> n a) ->
+                                (forall a. Incr a -> m (Incr a)) ->
+                                  TermE (m b) -> n b
 gfoldE v a l k (VarE x) = v x
-gfoldE v a l k (AppE p1 p2) = a (gfoldE v a l k p1) (gfoldE v a l k p2)
-gfoldE v a l k (LamE t) = l (gfoldE v a l k (mapE (\ x -> k (mapI (gfoldE v a l k) x)) t))
+gfoldE v a l k (AppE p) = (a . mapP (gfoldE v a l k)) p
+gfoldE v a l k (LamE t) = (l . gfoldE v a l k . mapE (k . mapI (gfoldE v a l k))) t
+
 
 joinE :: forall a . TermE (TermE a) -> TermE a
-joinE x = gfoldE id AppE LamE VarE x
+joinE x = (gfoldE id AppE LamE VarE) x
 
 cvtE :: forall a . TermE a -> Term a
-cvtE x = gfoldE Var App (\ x -> Lam (joinT (mapT distT x))) id x
+cvtE x = (gfoldE Var App (\ x -> (Lam . joinT . mapT distT) x) id) x
 
 cvtBodyE :: forall a . TermE (Incr (TermE a)) -> Term (Incr a)
-cvtBodyE x = joinT (mapT distT (cvtE (mapE (mapI cvtE) x)))
--}
+cvtBodyE x = (joinT . mapT distT . cvtE . mapE (mapI cvtE)) x
+
