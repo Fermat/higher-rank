@@ -15,77 +15,141 @@ data List :: * -> * where
 (.) :: forall p q r . (q -> r) -> (p -> q) -> p -> r
 (.) f g x = f (g x)
 
-
-data Char :: * where
-  LL :: Char
-  L :: Char
-  R :: Char
-  Z :: Char
-  S :: Char
-  X :: Char
-
-----------------------
-
-data Incr :: * -> * where
-  Zero :: forall a . Incr a
-  Succ :: forall a . a -> Incr a
-
-data Term :: * -> * where
-     Var :: forall a . a -> Term a
-     App :: forall a . Term a -> Term a -> Term a
-     Lam :: forall a . Term (Incr a) -> Term a
-
-mapI :: forall a b . (a -> b) -> Incr a -> Incr b
-mapI f Zero = Zero
-mapI f (Succ x) = Succ (f x)
-
-mapT :: forall a b. (a -> b) -> Term a -> Term b
-mapT f (Var x) = Var (f x)
-mapT f (App t1 t2) = App (mapT f t1) (mapT f t2)
-mapT f (Lam t) = Lam (mapT (mapI f) t)
-
-
-  
-gfoldT :: forall m n b . (forall a. m a -> n a) -> (forall a. n a -> n a -> n a) ->
-       	    (forall a. n (Incr a) -> n a) -> (forall a. Incr (m a) -> m (Incr a)) ->
-	    	    Term (m b) -> n b
-gfoldT v a l k (Var x) = v x
-
-gfoldT v a l k (App p1 p2) = a (gfoldT v a l k p1) (gfoldT v a l k p2) 
-
-gfoldT v a l k (Lam t) = l (gfoldT v a l k ((mapT k) t))
-
-foldT :: forall n b . (forall a. a -> n a) -> (forall a. n a -> n a -> n a) ->
-      	   (forall a. n (Incr a) -> n a) -> Term b -> n b
-foldT v a l (Var x) = v x
-foldT v a l (App p1 p2) = a  (foldT v a l p1) (foldT v a l p2)
-foldT v a l (Lam t) = l (foldT v a l t)
-
-
 id :: forall a . a -> a
 id x = x
 
-showT :: Term (List Char) -> List Char
-showT = gfoldT id showP (\ x -> Cons LL x) showI
+data Char :: * where
+  Lambda :: Char
+  Z :: Char
+  S :: Char
+  X :: Char
+  L :: Char
+  R :: Char
+  Space :: Char
+-- data String :: * where
+--   LParen :: String
+--   RParen :: String
+--   Space :: String
+--   Z :: String
+--   S :: String
+--   Lambda :: String
+type String :: * = List Char
+
+lParen :: String
+lParen = Cons L Nil
+
+rParen :: String
+rParen = Cons R Nil
+
+zero :: String
+zero = Cons Z Nil
+
+succ :: String
+succ = Cons S Nil
+
+space :: String
+space = Cons Space Nil
+
+lambda :: String
+lambda = Cons Lambda Nil
+
+----------------------
+
+data Pair :: * -> * where
+  Pair :: forall a . a -> a -> Pair a
+
+mapP :: forall a b . (a -> b) -> Pair a -> Pair b
+mapP f (Pair x y) = Pair (f x) (f y)
+
+
+data Incr :: * -> * where
+  Zero :: forall v . Incr v
+  Succ :: forall v . v -> Incr v
+
+data Term :: * -> * where
+     Var :: forall v . v -> Term v
+     App :: forall v . Pair (Term v) -> Term v
+     Lam :: forall v . Term (Incr v) -> Term v
+
+mapI :: forall a b . (a -> b) -> Incr a -> Incr b
+mapI f Zero = Zero
+mapI f (Succ x) = (Succ . f) x
+
+mapT :: forall a b. (a -> b) -> Term a -> Term b
+mapT f (Var x) = (Var . f) x
+mapT f (App p) = (App . mapP (mapT f)) p
+mapT f (Lam t) = (Lam . mapT (mapI f)) t
+
+
+foldT :: forall n b . (forall a. a -> n a) ->
+                        (forall a. Pair (n a) -> n a) ->
+                          (forall a. n (Incr a) -> n a) ->
+			    Term b -> n b
+foldT v a l (Var x) = v x
+foldT v a l (App p) = (a . mapP (foldT v a l)) p
+foldT v a l (Lam t) = (l . foldT v a l) t
+
+
+  
+gfoldT :: forall m n b . (forall a. m a -> n a) ->
+                           (forall a. Pair (n a) -> n a) ->
+			     (forall a. n (Incr a) -> n a) ->
+			       (forall a. Incr (m a) -> m (Incr a)) ->
+                                Term (m b) -> n b
+gfoldT v a l k (Var x) = v x
+gfoldT v a l k (App p) = (a . mapP (gfoldT v a l k)) p
+gfoldT v a l k (Lam t) = (l . gfoldT v a l k . mapT k) t
+
+foldT' :: forall n b . (forall a. a -> n a) ->
+                        (forall a. Pair (n a) -> n a) ->
+                          (forall a. n (Incr a) -> n a) ->
+			    Term b -> n b
+foldT' v a l = gfoldT v a l id
+
+
+
+showT :: Term String -> String
+showT = gfoldT id showP (\ x -> lambda ++ x) showI
+
+showTC :: Term Char -> String
+showTC = showT . mapT (\ x -> Cons x Nil)
+
+showP :: Pair String -> String
+showP (Pair a b) = lParen ++ a ++ space ++ b ++ rParen
+
+showI :: Incr String -> String
+showI Zero = zero
+showI (Succ x) = succ ++ x
 
 
 joinT :: forall a . Term (Term a) -> Term a
-joinT x = gfoldT id App Lam distT x
+joinT x = (gfoldT id App Lam distT) x 
 
 distT :: forall a . Incr (Term a) -> Term (Incr a)
 distT Zero = Var Zero
 distT (Succ x) = mapT Succ x
 
-helper :: List Char -> List Char
-helper = Cons LL
 
-showP :: List Char -> List Char -> List Char
-showP x y = app (app (app (app (Cons L Nil) x) (Cons X Nil)) y) (Cons R Nil)
+kfoldT :: forall a b . (a -> b) ->
+                        (Pair b -> b) ->
+			  (b -> b) ->
+                           (Incr a -> a) ->
+                             Term a -> b
+kfoldT v a l k (Var x) = v x
+kfoldT v a l k (App p) = (a . mapP (kfoldT v a l k)) p
+kfoldT v a l k (Lam t) = (l . kfoldT v a l k . mapT k) t
 
-showI :: Incr (List Char) -> List Char
-showI Zero = Cons Z Nil
-showI (Succ x) = Cons S x
+kfoldT' :: forall a b . (a -> b) ->
+                         (Pair b -> b) ->
+			  (b -> b) ->
+                           (Incr a -> a) ->
+                             Term a -> b
+kfoldT' v a l k t = gfoldT v a l k t
 
+showT' :: Term String -> String
+showT' = kfoldT' id showP (\ x -> lambda ++ x) showI
+
+{-
 data TermE :: * -> * where
   VarE :: forall a . a -> TermE a
   AppE :: forall a  . TermE a -> TermE a -> TermE a
@@ -113,3 +177,4 @@ cvtE x = gfoldE Var App (\ x -> Lam (joinT (mapT distT x))) id x
 
 cvtBodyE :: forall a . TermE (Incr (TermE a)) -> Term (Incr a)
 cvtBodyE x = joinT (mapT distT (cvtE (mapE (mapI cvtE) x)))
+-}
