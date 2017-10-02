@@ -161,7 +161,7 @@ norm g (Const a p) =
     Nothing -> Const a p
     Just b -> norm g b
 norm g (Ann a t) = Ann (norm g a) (norm g t)
-norm g (Lambda x t) =  Lambda x (norm g t)
+norm g (Lambda x t) =  Lambda (norm g x) (norm g t)
 norm g (Abs x t) = Abs x (norm g t)
 norm g (TApp t1 t2) = TApp (norm g t1) (norm g t2)
 norm g (App (Lambda (Var x p) t') t) = norm g $ runSubst t (Var x p) t'

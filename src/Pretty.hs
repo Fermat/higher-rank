@@ -18,9 +18,11 @@ instance Disp Doc where
 instance Disp String where
   disp x = if (isUpper $ head x) || (isLower $ head x)
            then text x
-           else if head x == '`'
-                then text x
-                else parens $ text x
+           else  parens $ text x
+
+                --  if head x == '`'
+                -- then text x
+                -- else
 
 instance Disp Int where
   disp = integer . toInteger
@@ -62,7 +64,8 @@ instance Disp (Maybe Exp) where
 instance Disp Exp where
 --  disp r | trace ("disp " ++ show r) False = undefined
   disp (Const x p) | isUpper (head x) = disp x
-                 | otherwise = brackets $ disp x
+                   | isLower (head x) = brackets $ disp x
+                   | otherwise = disp x
   disp Star = text "*"
   disp (Var x p) = disp x
 --  disp (Ann (Var x) Nothing) = disp x

@@ -29,7 +29,7 @@ main = flip catches handlers $ do
                                tyenv = makeTyEnv a  
                            case res of
                              Left e -> throw e
-                             Right pfs ->
+                             Right pfs -> -- print $ printTyped pfs
                                case proofChecks ks tyenv pfs of
                                  Left e -> throw e
                                  Right _ ->

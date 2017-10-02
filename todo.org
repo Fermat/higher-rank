@@ -4,6 +4,5 @@
 ** DONE Support type synonyms 
 ** DONE Aaron's Church merge sort
 ** DONE Better type checking error message
+** DONE Support infix notations, make Bird's program more readable.
 ** TODO Simply code and do some profiling
-** TODO Support infix notations, make Bird's program more readable.
-
