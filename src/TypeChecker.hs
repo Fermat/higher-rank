@@ -607,8 +607,50 @@ transit (Res fun pf
              (Just exp) gamma lvars):phi)
           Nothing i) = 
   case flatten exp of
-    (Var v p1) : xs -> handle v p1 xs
-    (Const v p1) : xs -> handle v p1 xs
+    (Var v p1) : xs ->
+      case goal of
+        Forall x y ->
+          let (vars, imp) = getVars goal
+              lv = length vars
+              absNames = zipWith (\ x y -> x ++ show y ++ "#") vars [i..]
+              absNames' = map (\ x -> Const x dummyPos) absNames
+              absVars = zip absNames' [getValue lvars ..]
+              sub = zip vars absNames'
+              imp' = apply (Subst sub) imp
+              newAbs = foldr (\ a b -> Abs a b) imp' absNames
+              pf' = replace pf pos newAbs
+              pos' = pos ++ take lv stream1 in
+            [(Res fun pf'
+              ((Phi pos'
+                (Just imp')
+                (Just exp)
+                gamma
+                (lvars++ absVars)):phi)
+              Nothing (i+lv))] ++ handle v p1 xs 
+
+        _ -> handle v p1 xs 
+      
+    (Const v p1) : xs ->
+      case goal of
+        Forall x y ->
+          let (vars, imp) = getVars goal
+              lv = length vars
+              absNames = zipWith (\ x y -> x ++ show y ++ "#") vars [i..]
+              absNames' = map (\ x -> Const x dummyPos) absNames
+              absVars = zip absNames' [getValue lvars ..]
+              sub = zip vars absNames'
+              imp' = apply (Subst sub) imp
+              newAbs = foldr (\ a b -> Abs a b) imp' absNames
+              pf' = replace pf pos newAbs
+              pos' = pos ++ take lv stream1 in
+            [(Res fun pf'
+              ((Phi pos'
+                (Just imp')
+                (Just exp)
+                gamma
+                (lvars++ absVars)):phi)
+              Nothing (i+lv))] ++ handle v p1 xs 
+        _ -> handle v p1 xs
     a ->
       let m' = Just $ text "when checking function" <+> text fun $$
                (text "need more information to check expression:" <+> disp exp) $$

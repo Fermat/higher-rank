@@ -29,9 +29,8 @@ primitive runST :: forall a . (forall s . ST s a) -> a
 -- test2 :: Bool
 -- test2 = let v = runST (newVar True) in runST (readVar v)
 
+f :: forall a s . MutVar s a -> MutVar s a
+f v = runST (newVar v `thenST` \ w -> readVar w)
 
-
-f :: forall a s . MutVar s a -> forall s' . ST s' (MutVar s a)
-f v u = newVar v `thenST` \ w -> readVar w
 
 
