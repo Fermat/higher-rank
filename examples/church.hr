@@ -33,6 +33,7 @@ mult' n m = \ s z -> n (m s) z
 
 exp' :: Nat -> Nat -> Nat 
 exp' n m = \ s z ->  (m n) s z
+
 -- note that exp' n m = m n will not type check because application does not generalize variables
 
 type (,) ::  * -> * -> * = \ a b . forall x . (a -> b -> x) -> x

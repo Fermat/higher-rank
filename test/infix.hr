@@ -15,3 +15,8 @@ data List :: * -> * where
 
 (.) :: forall p q r . (q -> r) -> (p -> q) -> p -> r
 (.) f g x = f (g x)
+
+app :: forall a . List a -> List a -> List a
+app Nil l2 = l2
+app (Cons a as) l2 = Cons a (as `app` l2)
+

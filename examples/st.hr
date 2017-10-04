@@ -1,0 +1,37 @@
+module st where
+
+data Bool :: * where
+  True :: Bool
+  False :: Bool
+
+data ST :: * -> * -> * where
+data MutVar :: * -> * -> * where
+data Unit :: * where
+
+primitive newVar :: forall a s . a -> ST s (MutVar s a)
+primitive readVar :: forall a s . MutVar s a -> ST s a
+primitive writeVar :: forall a s . MutVar s a -> a -> ST s Unit
+primitive thenST :: forall a b s . ST s a -> (a -> ST s b) -> ST s b
+
+swap :: forall a s . MutVar s a -> MutVar s a -> ST s Unit
+swap v w = readVar v `thenST` \ a ->
+           readVar w `thenST` \ b ->
+	   writeVar v b `thenST` \ c ->
+	   writeVar w a
+
+primitive runST' :: forall a s . ST s a -> a
+
+test1 :: Bool
+test1 = let v = runST' (newVar True) in runST' (readVar v)
+
+primitive runST :: forall a . (forall s . ST s a) -> a
+
+-- test2 :: Bool
+-- test2 = let v = runST (newVar True) in runST (readVar v)
+
+
+
+f :: forall a s . MutVar s a -> forall s' . ST s' (MutVar s a)
+f v u = newVar v `thenST` \ w -> readVar w
+
+

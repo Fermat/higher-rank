@@ -58,6 +58,10 @@ toOp op "infixr" app var =
 toOp op "infixl" app var =
   Infix (reservedOp op >> getPosition >>= \ p -> return (\ x y -> app (app (var op p) x) y))
   AssocLeft
+toOp op "infixll" app var =
+  Infix (reservedOp ("`"++op++"`") >> getPosition >>= \ p -> return (\ x y -> app (app (var op p) x) y))
+  AssocLeft
+  
 -- binOp AssocLeft op (binApp op app var)
 
 -- binApp op app var x y = app (app (var op) x) y
@@ -106,9 +110,19 @@ primDecl :: Parser Decl
 primDecl = do
   reserved "primitive"
   f <- try var <|> opVar
-  reservedOp "::"
-  k <- ty
-  return $ Prim f k
+  st <- getState
+  let vname = getName f
+  if (isLower $ head vname) then
+    let
+        table' = IM.insertWith (++) 7 [toOp vname "infixll" App Var] $ progOpTable st
+        prog' = buildExpressionParser (map snd (IM.toAscList table')) termA in
+      do putState $ ParserState prog' (typeParser st) table' (typeOpTable st) 
+         reservedOp "::"
+         k <- ty
+         return $ Prim f k
+    else do reservedOp "::"
+            k <- ty
+            return $ Prim f k
 
 typeSyn :: Parser Decl
 typeSyn = 
@@ -134,19 +148,34 @@ dataDecl = do
 funDecl :: Parser Decl
 funDecl = do
   v <- try var <|> opVar
-  reservedOp "::"
-  t <- ty
-  ls <- manyTill eq (lookAhead (reserved "data") <|> lookAhead (reserved "type") <|> lookAhead (reserved "prog")  <|>lookAhead (reserved "primitive") <|> (isNotVar v) <|> try eof)
-  return $ FunDecl v t ls
-    where eq = do
-            try var <|> opVar
-            ps <- many $ try con <|> try var <|> parens patComp
-            reservedOp "="
-            p <- term
-            return (ps, p)
-          isNotVar v = do
-            v' <- lookAhead $ try var <|> try opVar
-            when (getName v' == getName v) $ parserFail "from funDecl"
+  st <- getState
+  let vname = getName v
+  if (isLower $ head vname) then
+    let
+        table' = IM.insertWith (++) 7 [toOp vname "infixll" App Var] $ progOpTable st
+        prog' = buildExpressionParser (map snd (IM.toAscList table')) termA in
+      do putState $ ParserState prog' (typeParser st) table' (typeOpTable st) 
+         retDecl v
+    else retDecl v
+    where retDecl v =
+            do reservedOp "::"
+               t <- ty
+               ls <- manyTill eq (lookAhead (reserved "data") <|>
+                                  lookAhead (reserved "type") <|>
+                                  lookAhead (reserved "prog") <|>
+                                  lookAhead (reserved "primitive") <|>
+                                  (isNotVar v) <|> try eof)
+               return $ FunDecl v t ls
+
+          eq = 
+            do try var <|> opVar
+               ps <- many $ try con <|> try var <|> parens patComp
+               reservedOp "="
+               p <- term
+               return (ps, p)
+          isNotVar v = 
+            do v' <- lookAhead $ try var <|> try opVar
+               when (getName v' == getName v) $ parserFail "from funDecl"
 
 var :: Parser Exp
 var = do
@@ -296,8 +325,8 @@ gottlobStyle = Token.LanguageDef
                 , Token.nestedComments = True
                 , Token.identStart     = letter
                 , Token.identLetter    = alphaNum <|> oneOf "_'"
-                , Token.opStart        = oneOf ":!#$%&*+.,/<=>?@\\^|-"
-                , Token.opLetter       = (oneOf ":!#$%&*+.,/<=>?@\\^|-") <|> alphaNum
+                , Token.opStart        = oneOf ":!#$%&*+.,/<=>?@\\^|-`"
+                , Token.opLetter       = (oneOf ":!#$%&*+.,/<=>?@\\^|-`") <|> alphaNum
                 , Token.caseSensitive  = True
                 , Token.reservedNames =
                   [
