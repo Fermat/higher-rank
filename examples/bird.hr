@@ -122,7 +122,7 @@ showI (Succ x) = succ ++ x
 
 
 joinT :: forall a . Term (Term a) -> Term a
-joinT x = (gfoldT id App Lam distT) x 
+joinT = gfoldT id App Lam distT
 
 distT :: forall a . Incr (Term a) -> Term (Incr a)
 distT Zero = Var Zero
@@ -186,11 +186,11 @@ gfoldE v a l k (LamE t) = (l . gfoldE v a l k . mapE (k . mapI (gfoldE v a l k))
 
 
 joinE :: forall a . TermE (TermE a) -> TermE a
-joinE x = (gfoldE id AppE LamE VarE) x
+joinE = gfoldE id AppE LamE VarE
 
 cvtE :: forall a . TermE a -> Term a
-cvtE x = (gfoldE Var App (\ x -> (Lam . joinT . mapT distT) x) id) x
+cvtE = gfoldE Var App (Lam . joinT . mapT distT) id
 
 cvtBodyE :: forall a . TermE (Incr (TermE a)) -> Term (Incr a)
-cvtBodyE x = (joinT . mapT distT . cvtE . mapE (mapI cvtE)) x
+cvtBodyE = joinT . mapT distT . cvtE . mapE (mapI cvtE)
 
