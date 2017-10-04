@@ -369,12 +369,12 @@ matchError fun imp goal y f pf exp pos =
   (nest 2 $ text "current mixed proof term" $$
    nest 2 (disp pf))
 
-transit :: ResState -> [ResState]
--- transit state | trace ("transit " ++show (state) ++"\n") False = undefined
-transit (Res fun pf
+-- performing type abstraction
+typeAbs :: ResState -> [ResState]
+typeAbs (Res fun pf
           ((Phi pos
-             (Just goal@(Forall x y))
-             (Just exp@(Lambda _ _)) gamma lvars):phi)
+             (Just goal)
+             (Just exp) gamma lvars):phi)
           Nothing i) =
   let (vars, imp) = getVars goal
       lv = length vars
@@ -385,8 +385,8 @@ transit (Res fun pf
       imp' = apply (Subst sub) imp
       newAbs = foldr (\ a b -> Abs a b) imp' absNames
       pf' = replace pf pos newAbs
-      pos' = pos ++ take lv stream1
-  in [(Res fun pf'
+      pos' = pos ++ take lv stream1 in
+    [(Res fun pf'
        ((Phi pos'
           (Just imp')
           (Just exp)
@@ -394,7 +394,14 @@ transit (Res fun pf
           (lvars++ absVars)):phi)
        Nothing (i+lv))]
 
-
+transit :: ResState -> [ResState]
+-- transit state | trace ("transit " ++show (state) ++"\n") False = undefined
+transit arg@(Res fun pf
+             ((Phi pos
+               (Just goal@(Forall x y))
+               (Just exp@(Lambda _ _)) gamma lvars):phi)
+             Nothing i) = typeAbs arg
+  
 transit (Res fun pf
           ((Phi pos
              (Just goal@(Imply _ _))
@@ -601,55 +608,22 @@ transit (Res fun pf
                                (Just mess) i]
 
 
-transit (Res fun pf
-          ((Phi pos
-             (Just goal)
-             (Just exp) gamma lvars):phi)
-          Nothing i) = 
+transit arg@(Res fun pf
+             ((Phi pos
+               (Just goal)
+               (Just exp) gamma lvars):phi)
+             Nothing i) = 
   case flatten exp of
     (Var v p1) : xs ->
       case goal of
         Forall x y ->
-          let (vars, imp) = getVars goal
-              lv = length vars
-              absNames = zipWith (\ x y -> x ++ show y ++ "#") vars [i..]
-              absNames' = map (\ x -> Const x dummyPos) absNames
-              absVars = zip absNames' [getValue lvars ..]
-              sub = zip vars absNames'
-              imp' = apply (Subst sub) imp
-              newAbs = foldr (\ a b -> Abs a b) imp' absNames
-              pf' = replace pf pos newAbs
-              pos' = pos ++ take lv stream1 in
-            [(Res fun pf'
-              ((Phi pos'
-                (Just imp')
-                (Just exp)
-                gamma
-                (lvars++ absVars)):phi)
-              Nothing (i+lv))] ++ handle v p1 xs 
-
+          typeAbs arg ++ handle v p1 xs 
         _ -> handle v p1 xs 
       
     (Const v p1) : xs ->
       case goal of
         Forall x y ->
-          let (vars, imp) = getVars goal
-              lv = length vars
-              absNames = zipWith (\ x y -> x ++ show y ++ "#") vars [i..]
-              absNames' = map (\ x -> Const x dummyPos) absNames
-              absVars = zip absNames' [getValue lvars ..]
-              sub = zip vars absNames'
-              imp' = apply (Subst sub) imp
-              newAbs = foldr (\ a b -> Abs a b) imp' absNames
-              pf' = replace pf pos newAbs
-              pos' = pos ++ take lv stream1 in
-            [(Res fun pf'
-              ((Phi pos'
-                (Just imp')
-                (Just exp)
-                gamma
-                (lvars++ absVars)):phi)
-              Nothing (i+lv))] ++ handle v p1 xs 
+          typeAbs arg ++ handle v p1 xs 
         _ -> handle v p1 xs
     a ->
       let m' = Just $ text "when checking function" <+> text fun $$
