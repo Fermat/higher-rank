@@ -1,17 +1,29 @@
 module st where
 
+prog infixl 6 ++
+data Char :: * where
+data List :: * -> * where
+ Nil :: forall a . List a 
+ Cons :: forall a . a -> List a -> List a
+
+(++) :: forall a . List a -> List a -> List a
+(++) Nil l2 = l2
+(++) (Cons a as) l2 = Cons a (as ++ l2)
+
 data Bool :: * where
   True :: Bool
   False :: Bool
 
 data ST :: * -> * -> * where
+data ReadWorld :: * where
 data MutVar :: * -> * -> * where
 data Unit :: * where
-
+  Unit :: Unit
 primitive newVar :: forall a s . a -> ST s (MutVar s a)
 primitive readVar :: forall a s . MutVar s a -> ST s a
 primitive writeVar :: forall a s . MutVar s a -> a -> ST s Unit
 primitive thenST :: forall a b s . ST s a -> (a -> ST s b) -> ST s b
+primitive thenST_ :: forall b s . ST s Unit -> ST s b -> ST s b
 
 swap :: forall a s . MutVar s a -> MutVar s a -> ST s Unit
 swap v w = readVar v `thenST` \ a ->
@@ -25,12 +37,36 @@ test1 :: Bool
 test1 = let v = runST' (newVar True) in runST' (readVar v)
 
 primitive runST :: forall a . (forall s . ST s a) -> a
+primitive returnST :: forall a s . a -> ST s a
 
+-- Note that the following code will not pass the type
+-- checker due to the reason that explained in the ST paper
 -- test2 :: Bool
 -- test2 = let v = runST (newVar True) in runST (readVar v)
 
 f :: forall a s . MutVar s a -> MutVar s a
 f v = runST (newVar v `thenST` \ w -> readVar w)
 
+-- index
+data Ind :: * where
+data MutArr :: * -> * -> * -> * where
+data Array :: * -> * -> * where
+primitive newArr :: forall elt s . (Ind, Ind) -> elt -> ST s (MutArr s Ind elt)
+primitive readArr :: forall elt s . MutArr s Ind elt -> Ind -> ST s elt
+primitive writeArr :: forall elt s . MutArr s Ind elt -> Ind -> elt -> ST s Unit
+primitive freezeArr :: forall elt s . MutArr s Ind elt -> ST s (Array Ind elt)
 
+
+
+
+
+--- 
+type IO :: * -> * = \ a . ST ReadWorld a
+
+primitive putChar :: Char -> IO Unit
+primitive getChar :: IO Char
+
+putString :: List Char -> IO Unit
+putString Nil = returnST Unit
+putString (Cons c cs) = putChar c `thenST_` putString cs
 
