@@ -1,10 +1,34 @@
 module Monad where
+-----------------
+
+prog infixl 6 ++
 data List :: * -> * where
  Nil :: forall a . List a 
  Cons :: forall a . a -> List a -> List a
 
+(++) :: forall a . List a -> List a -> List a
+(++) Nil l2 = l2
+(++) (Cons a as) l2 = Cons a (as ++ l2)
+
 id :: forall a . (a -> a)
 id x = x
+
+null :: forall a . List a -> Bool
+null Nil = True
+null (Cons a as) = False
+
+head :: forall a . List a -> a
+head (Cons a as) = a
+
+tail :: forall a . List a -> List a
+tail (Cons a as) = as
+
+data Bool :: * where
+  True :: Bool
+  False :: Bool
+
+
+---------------
 
 data Monad :: (* -> *) -> * where
   Mon :: forall m . (forall a . a -> m a) -> (forall a b . m a -> (a -> m b) -> m b) -> Monad m
@@ -18,7 +42,6 @@ bind (Mon r b) = b
 join :: forall m a . Monad m -> m (m a) -> m a
 join m xss = bind m xss id
 
-primitive app :: forall a . List a -> List a -> List a
 
 listMonad :: Monad List
 listMonad  = Mon lunit lbind
@@ -28,9 +51,43 @@ lunit x = Cons x Nil
 
 lbind :: forall a b . List a -> (a -> List b) -> List b
 lbind Nil f = Nil
-lbind (Cons x xs) f = app (f x) (lbind xs f)
+lbind (Cons x xs) f =  f x ++ lbind xs f
 
 primitive f :: forall p m a b . m p -> p a -> p b
 
 test :: forall a b . Monad List -> List a -> List b
 test = f
+
+data Maybe :: * -> * where
+   Nothing :: forall a . Maybe a
+   Just :: forall a . a -> Maybe a
+
+maybeMonad :: Monad Maybe
+maybeMonad = Mon munit mbind
+
+munit :: forall a . a -> Maybe a
+munit x = Just x
+
+mbind :: forall a b . Maybe a -> (a -> Maybe b) -> Maybe b
+mbind Nothing f = Nothing
+mbind (Just x) f = f x
+
+
+data Stack :: * -> * where
+  Stack :: forall a xs . xs ->
+                         (a -> xs -> xs) ->
+                         (xs -> xs) ->
+			 (xs -> a) ->
+		         (xs -> Bool) -> Stack a
+
+
+makeListStack :: forall a . List a -> Stack a
+makeListStack xs = Stack xs (Cons) tail head null
+
+push :: forall a . a -> Stack a -> Stack a
+push x (Stack self push' pop top empty) =
+  Stack (push' x self) push' pop top empty
+
+top :: forall a . Stack a -> a
+top (Stack self push pop top' empty) = top' self
+

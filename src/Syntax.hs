@@ -120,7 +120,7 @@ apply s (Imply f1 f2) = Imply (apply s f1) (apply s f2)
 apply s (Forall x f2) = Forall x (apply (minus s [x]) f2)
 apply s (Abs x f2) = Abs x (apply (minus s [x]) f2)
 apply s (Lambda (Ann p t) f2) =
-  Lambda (Ann p (apply s t)) (apply s f2)
+  Lambda (Ann (apply s p) (apply s t)) (apply s f2)
 -- type level lambda  
 apply s (Lambda (Var x p) f2) =
   Lambda (Var x p) (apply (minus s [x]) f2)

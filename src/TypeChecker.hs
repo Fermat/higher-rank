@@ -72,7 +72,7 @@ checkDecls a =
   in mapM (\ (t, e, f, p) ->
               let t' = normalizeTy t tydef in 
                 do{(e', vars) <- typeCheck f tyEnv' (t', e);
-                   return (Var f p, t', process vars e')
+                   return (Var f p, t', process vars e') -- 
                 })
      funcDefs
 
