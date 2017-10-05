@@ -1,6 +1,7 @@
 module Monad where
------------------
 
+-----------------
+prog infixr 9 .
 prog infixl 6 ++
 data List :: * -> * where
  Nil :: forall a . List a 
@@ -23,12 +24,24 @@ head (Cons a as) = a
 tail :: forall a . List a -> List a
 tail (Cons a as) = as
 
+map :: forall a b . (a -> b) -> List a -> List b
+map f Nil = Nil
+map f (Cons x xs) = Cons (f x) (map f xs)
+
+(.) :: forall p q r . (q -> r) -> (p -> q) -> p -> r
+(.) f g x = f (g x)
+
 data Bool :: * where
   True :: Bool
   False :: Bool
 
+data Nat :: * where
+  Zero :: Nat
+  Succ :: Nat -> Nat
 
 ---------------
+-- The following program are coming from Mark P. Jones's
+-- First-class Polymorphism with Type Inference
 
 data Monad :: (* -> *) -> * where
   Mon :: forall m . (forall a . a -> m a) -> (forall a b . m a -> (a -> m b) -> m b) -> Monad m
@@ -91,3 +104,54 @@ push x (Stack self push' pop top empty) =
 top :: forall a . Stack a -> a
 top (Stack self push pop top' empty) = top' self
 
+testExpr :: List Nat
+testExpr = map (top . push one) (Cons (makeListStack list1) (Cons (makeListStack list1) Nil))
+
+one :: Nat
+one = Succ Zero
+
+list1 :: List Nat
+list1 = Cons one (Cons (Succ one) Nil)
+
+data Obj :: (* -> *) -> * where
+  MkObj :: forall m xs . xs -> m xs -> Obj m
+
+data Class :: (* -> *) -> * -> * where
+  MkClass :: forall m s . (forall f . (f -> s) -> (f -> s -> f) -> m f -> m f) -> Class m s
+
+new :: forall m s . Class m s -> s -> Obj m
+new (MkClass c) s = MkObj s (fixM c)
+
+fixM :: forall m s . (forall f . (f -> s) -> (f -> s -> f) -> m f -> m f) -> m s
+fixM c = c (\ r -> r) (\ a r -> r) (fixM c)
+
+data NT :: (* -> *) -> (* -> *) -> * where
+  MkNT :: forall m n . (forall a . m a -> n a) -> NT m n
+
+coerce :: forall m n . NT m n -> (forall a . m a -> n a)
+coerce (MkNT f) = f
+
+data PointM :: * -> * where
+  MkP :: forall s . (s -> Nat -> s) -> (s -> Nat) -> PointM s
+
+set :: forall s . PointM s -> (s -> Nat -> s)
+set (MkP s g) = s
+
+get :: forall s . PointM s -> (s -> Nat)
+get (MkP s g) = g
+
+pointSet :: forall p . NT p PointM -> (Obj p -> Nat -> Obj p)
+pointSet st (MkObj s m) i = let f = coerce st in MkObj (set (f m) s i) m
+
+pointClass :: Class PointM Nat
+pointClass = MkClass (\ extr over self -> MkP (\ r i -> over r i) (\ r -> extr r))
+
+data Inc :: (* -> *) -> (* -> *) -> * -> * where
+  MkInc :: forall s n r . (forall f . (f -> r) -> (f -> r -> f) -> s f -> n f -> n f) -> Inc s n r
+
+ext :: forall p q s r . NT p q -> Class q s -> Inc q p r -> (r -> s) -> (r -> s -> r) -> Class p r
+ext  st (MkClass sup) (MkInc inc) gt put =
+  MkClass (\ g p self -> inc g p (sup (\ s -> gt (g s))
+                                      (\ s t -> p s (put (g s) t))
+                                      (let v = coerce st in v self))
+				  self)

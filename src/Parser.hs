@@ -339,7 +339,7 @@ gottlobStyle = Token.LanguageDef
                     "show",
                     "where", "module",
                     "infix", "infixl", "infixr", "pre", "post",
-                    "formula", "prog", "set",
+                    "formula", "prog",
                     "tactic", "deriving"
                   ]
                , Token.reservedOpNames =
