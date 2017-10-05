@@ -1,5 +1,8 @@
 module hoas where
 
+-- The following programs are from Adam Chlipala's
+-- Parametric Higher-order Abstract Syntax for Mechanized Semantics
+
 data Term :: * where
   App :: Term -> Term -> Term
   Abs :: (Term -> Term) -> Term

@@ -32,7 +32,10 @@ type (,) ::  * -> * -> * = \ a b . Pair a b
 (,) :: forall a b . a -> b -> (a, b)
 (,) a b = Pair a b
 
---------------
+----------------------------
+-- The following programs are from John Launchbury and Simon Peyton Jones'
+-- Lazy Functional State Threads
+
 data ST :: * -> * -> * where
 data ReadWorld :: * where
 data MutVar :: * -> * -> * where

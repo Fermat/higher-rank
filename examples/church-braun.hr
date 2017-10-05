@@ -1,4 +1,7 @@
 module churchB where
+-- The following programs are adapted from
+-- Aaron Stump and Peng Fu's
+-- Efficiency of lambda-encodings in total type theory
 
 type Bool :: * = forall x . x -> x -> x
 

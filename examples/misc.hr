@@ -28,6 +28,7 @@ data Bool :: * where
   False :: Bool
 type infixl 7 ,
 prog infixl 7 ,
+
 data Pair :: * -> * -> * where
   Pair :: forall a b . a -> b -> Pair a b
 
@@ -35,6 +36,10 @@ type (,) ::  * -> * -> * = \ a b . Pair a b
 
 (,) :: forall a b . a -> b -> (a, b)
 (,) a b = Pair a b
+
+primitive undefined :: forall a . a
+primitive add :: Nat -> Nat -> Nat
+primitive one :: Nat 
 
 --------------
 
@@ -53,3 +58,61 @@ f = \ x -> x x
 f' :: (forall a . a) -> (forall a . a)
 f' = \ x -> x x
 
+------------------
+
+fix :: forall a . (a -> a) -> a
+fix f = f (fix f)  
+
+data Nested :: * -> * where
+  NN :: forall a . Nested a
+  NCons :: forall a . a -> Nested (List a) -> Nested a
+
+length1 :: forall a . Nested a -> Nat
+length1 NN = Zero
+length1 (NCons x xs) = add one (length1 xs)
+
+length2 :: forall a . Nested a -> Nat
+length2 = fix (\ r n -> case n of
+                          NN -> Zero
+                          NCons x xs -> add one (r xs))
+
+poly :: (forall v . v -> v) -> Pair Nat Bool
+poly f = Pair (f Zero) (f True)
+
+data F :: * -> * where
+
+l :: forall x . F x -> F x
+l = undefined
+
+l' :: (forall x . F x) -> (forall x . F x)
+l' = undefined 
+
+test1 :: forall y . F y
+test1 = fix l
+
+test2 :: forall y . F y
+test2 = fix l'
+
+data Bot :: * where 
+data Top :: * where
+
+k1 :: forall p . p Bot -> p Top
+k1 = undefined
+
+k2 :: forall p . p Top -> p Top
+k2 = undefined
+
+a1 :: Bot -> Top
+a1 = k1
+
+a2 :: Top -> Top
+a2 = k2
+
+k1' :: forall q . (forall y . q -> y) -> Bot
+k1' = undefined
+
+k2' :: forall x . x -> x
+k2' = undefined
+
+test' :: Bot
+test' = k1' k2'

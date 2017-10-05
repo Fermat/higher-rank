@@ -53,6 +53,8 @@ lambda :: String
 lambda = Cons Lambda Nil
 
 ----------------------
+-- The following programs are from R. Bird and R. Paterson's
+-- De Bruijn notation as a nested datatype
 
 data Pair :: * -> * where
   Pair :: forall a . a -> a -> Pair a
