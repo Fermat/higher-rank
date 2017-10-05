@@ -1,0 +1,84 @@
+module hoas where
+
+data Term :: * where
+  App :: Term -> Term -> Term
+  Abs :: (Term -> Term) -> Term
+
+id :: Term
+id = Abs (\ x -> x)
+
+diverge :: Term
+diverge = App (Abs (\ x -> App x x)) (Abs (\ x -> App x x))
+
+selfApply :: Term -> Term
+selfApply x = case x of
+                App a b -> App a b
+		Abs f -> f (Abs f)
+
+bad :: Term
+bad = selfApply (Abs selfApply)
+
+data Unit :: * where
+  Unit :: Unit
+
+data PTerm :: * -> * where
+  PVar :: forall a . a -> PTerm a
+  PApp :: forall a . PTerm a -> PTerm a -> PTerm a
+  PAbs :: forall a . (a -> PTerm a) -> PTerm a
+
+data Nat :: * where
+  Z :: Nat
+  S :: Nat -> Nat
+
+primitive add :: Nat -> Nat -> Nat
+
+numVars :: PTerm Unit -> Nat
+numVars (PVar x) = S Z
+numVars (PApp e1 e2) = add (numVars e1) (numVars e2)
+numVars (PAbs e') = numVars (e' Unit)
+
+numVars' :: (forall a . PTerm a) -> Nat
+numVars' e = numVars e
+
+pid :: forall a . PTerm a
+pid = PAbs (\ x -> PVar x) 
+
+test1 :: Nat
+test1 = numVars' pid
+
+data Bool :: * where
+ True :: Bool
+ False :: Bool
+
+primitive and :: Bool -> Bool -> Bool
+
+canEta' :: PTerm Bool -> Bool
+canEta' (PVar b) = b
+canEta' (PApp e1 e2) = and (canEta' e1) (canEta' e2)
+canEta' (PAbs e) = canEta' (e True)
+
+canEta :: PTerm Bool -> Bool
+canEta (PAbs e) = case e False of
+                     PApp e1 (PVar False) -> canEta' e1
+                     y -> False
+canEta y = False
+
+canEta'' :: (forall a . PTerm a) -> Bool
+canEta'' x = canEta x
+
+test1 :: Bool
+test1 = canEta'' pid
+
+type PTerm1 :: * = forall a . a -> PTerm a
+
+subst :: forall a . PTerm (PTerm a) -> PTerm a
+subst (PVar e) = e
+subst (PApp e1 e2) = PApp (subst e1) (subst e2)
+subst (PAbs e) = PAbs (\ x -> subst (e (PVar x)))
+
+subst' :: PTerm1 -> (forall a . PTerm a) -> (forall a . PTerm a)
+subst' e1 e2 = subst (e1 e2)
+
+test3 :: forall a . PTerm a
+test3 = subst' (\ x -> PVar x) pid
+

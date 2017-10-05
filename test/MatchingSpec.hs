@@ -115,3 +115,5 @@ test12 = map disp $ runMatch exp31 exp32
   --   current expression: k
   --   current mixed proof term
   --     g1 @(\ x1# . x1#) @qa1# @qb2# @F
+
+

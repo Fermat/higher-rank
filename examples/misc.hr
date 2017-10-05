@@ -1,0 +1,55 @@
+module misc where
+------------------
+prog infixl 6 ++
+data Char :: * where
+
+data Nat :: * where
+  Zero :: Nat
+  Succ :: Nat -> Nat
+
+data List :: * -> * where
+ Nil :: forall a . List a 
+ Cons :: forall a . a -> List a -> List a
+
+(++) :: forall a . List a -> List a -> List a
+(++) Nil l2 = l2
+(++) (Cons a as) l2 = Cons a (as ++ l2)
+
+foldr :: forall a b . (a -> b -> b) -> b -> List a -> b
+foldr f b Nil = b
+foldr f b (Cons a as) = f a (foldr f b as) 
+
+map :: forall a b . (a -> b) -> List a -> List b
+map f Nil = Nil
+map f (Cons x xs) = Cons (f x) (map f xs)
+
+data Bool :: * where
+  True :: Bool
+  False :: Bool
+type infixl 7 ,
+prog infixl 7 ,
+data Pair :: * -> * -> * where
+  Pair :: forall a b . a -> b -> Pair a b
+
+type (,) ::  * -> * -> * = \ a b . Pair a b
+
+(,) :: forall a b . a -> b -> (a, b)
+(,) a b = Pair a b
+
+--------------
+
+data Maybe :: * -> * where
+   Nothing :: forall a . Maybe a
+   Just :: forall a . a -> Maybe a
+
+g :: Maybe (forall a . List a -> a) -> (Nat, Bool)
+g Nothing = (Zero, False)
+g (Just get) = (get (Cons Zero Nil), get (Cons True Nil))
+
+
+f :: (forall a . a -> a) -> (forall a . a -> a) 
+f = \ x -> x x
+
+f' :: (forall a . a) -> (forall a . a)
+f' = \ x -> x x
+
