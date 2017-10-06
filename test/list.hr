@@ -1,4 +1,7 @@
 module List where
+prog infixr 9 .
+(.) :: forall p q r . (q -> r) -> (p -> q) -> p -> r
+(.) f g x = f (g x)
 
 data List :: * -> * where
  Nil :: forall a . List a 
@@ -65,7 +68,7 @@ l = id id Z
 
 l' :: forall a . a -> a
 -- l' x = id id id x
-l' = id id id id id id id id id
+l' = id (id (id id id id) (id id id id) (id id id id) (id id id id)) (id (id id id id) (id id id id) (id id id id) (id id id id)) (id (id id id id) (id id id id) (id id id id) (id id id id)) (id (id id id id) (id id id id) (id id id id) (id id id id))
 -- id id id id id id id id id 
 
 reverse :: forall a . List a -> List a
