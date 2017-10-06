@@ -494,118 +494,73 @@ transit (Res fun pf
       pf' = replace pf pos newLet
   in [(Res fun pf' (newEnv++phi) Nothing j')]
       
-transit (Res fun pf
-          ((Phi pos
-             (Just goal)
-             (Just exp) gamma lvars):phi)
-          Nothing i)
+transit arg@(Res fun pf
+             ((Phi pos
+               (Just goal)
+               (Just exp) gamma lvars):phi)
+             Nothing i)
   | isAtom exp =
-      let y = getName exp
-          ypos = getPos exp
-      in case lookup y gamma of
-        Nothing ->
-          let m' = Just $ disp ypos <> text ":"<+> text "can't find" <+> text y
-                   <+> text "in the environment" 
-          in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
-        Just f | isVar f || isVar goal ->
-            let sub =
-                  if f == goal then []
-                  else if isVar f then [(getName f, goal)]
-                  else if isVar goal then [(getName goal, f)]
-                  else error "internal error from transit" in
-            if scopeCheck lvars sub then
-              let lvars' = applyS sub lvars
-                  gamma' = map (\ (x, t) ->
-                                   (x, apply (Subst sub) t) )
-                           gamma
-                  pf' = apply (Subst sub) pf
-                  pf'' = replace pf' pos exp
-              in case applyPhi sub phi of 
-                   Right p ->
-                     return (Res fun pf''
-                              (p++[Phi pos Nothing Nothing gamma' lvars'])
-                              Nothing i)
-                   Left m' ->
-                     let mess = text "globally, " <+>
-                                scopeError fun f goal f y sub lvars pf exp ypos
-                         m1 = m' $$ nest 2 mess
-                     in [Res fun pf
+    case goal of
+      Forall x y -> typeAbs arg ++ varcase
+      _ -> varcase
+  where varcase = 
+          let y = getName exp
+              ypos = getPos exp
+          in case lookup y gamma of
+               Nothing ->
+                 let m' = Just $ disp ypos <> text ":"<+> text "can't find" <+> text y
+                          <+> text "in the environment" 
+                 in [(Res fun pf ((Phi pos (Just goal) (Just exp) gamma lvars):phi) m' i)]
+               Just f ->
+                 let (vars2, imp2) = getVars f
+                     fresh = map (\ (v, j) -> v ++ show j ++ "#") $ zip vars2 [i..]
+                     fresh' = map (\ x -> Var x dummyPos) fresh
+                     renaming = zip vars2 fresh'
+                     imp2' = apply (Subst renaming) imp2
+                     i' = i + length fresh
+                     ss = runMatch imp2' goal
+                 in case ss of
+                   [] ->
+                     let m' = matchError fun imp2' goal y f pf exp ypos
+                     in [(Res fun pf
                           ((Phi pos
-                             (Just goal)
-                             (Just exp) gamma lvars):phi)
-                          (Just m1) i]                         
-                             
-            else let mess = scopeError fun f goal f y sub lvars pf exp ypos
-                 in [Res fun pf
-                      ((Phi pos
-                        (Just goal)
-                        (Just exp) gamma lvars):phi)
-                      (Just mess) i]
-                         
-        Just f | otherwise ->
-          let (vars, imp) = getVars goal
-              lv = length vars
-              absNames = zipWith (\ x y -> x ++ show y ++ "#") vars [i..]
-              absNames' = map (\ x -> Const x dummyPos) absNames
-              absVars = zip absNames' [getValue lvars ..]
-              sub = zip vars absNames'
-              imp' = apply (Subst sub) imp
-              newAbs = foldr (\ a b -> Abs a b) imp' absNames
-              pf1 = replace pf pos newAbs
-              pos' = pos ++ take lv stream1
-              i1 = i+lv
-              pos1 = pos'
-              goal1 = imp'
-              lvars1 = lvars++absVars
-              (vars2, imp2) = getVars f
-              fresh = map (\ (v, j) -> v ++ show j ++ "#") $ zip vars2 [i1..]
-              fresh' = map (\ x -> Var x dummyPos) fresh
-              renaming = zip vars2 fresh'
-              imp2' = apply (Subst renaming) imp2
-              i' = i1 + length vars
-              ss = runMatch imp2' goal1
-          in case ss of
-              [] ->
-                let m' = matchError fun imp2' goal1 y f pf exp ypos
-                in [(Res fun pf
-                      ((Phi pos
-                         (Just goal)
-                         (Just exp) gamma lvars):phi)
-                      (Just m') i)]
-              _ ->
-                do Subst sub' <- ss
-                   if scopeCheck lvars1 sub'
-                     then
-                     let pf' = normalize $ apply (Subst sub') pf1
-                         np = ([ s | r <- fresh,
+                            (Just goal)
+                            (Just exp) gamma lvars):phi)
+                          (Just m') i)]
+                   _ ->
+                     do Subst sub' <- ss
+                        if scopeCheck lvars sub'
+                          then
+                          let pf' = normalize $ apply (Subst sub') pf
+                              np = ([ s | r <- fresh,
                                       let s = case lookup r sub' of
                                                 Nothing -> (Var r dummyPos)
                                                 Just t -> t])
-                         contm = foldl' (\ z x -> TApp z x) exp np     
-                         pf'' = replace pf' pos1 contm
-                         n = getValue lvars1
-                         freshlvars = map (\ x -> (x, n)) fresh'
-                         gamma' = map (\ (x, t) -> (x, normalize $ apply (Subst sub') t)) gamma
-                         lvars' = applyS sub' (lvars1++freshlvars)
-                         phi' = applyPhi sub' phi 
-                     in case phi' of
-                          Right p ->
-                            return (Res fun pf''
-                                     (p++[Phi pos1 Nothing Nothing gamma' lvars'])
-                                     Nothing i')
-                          Left m' ->
-                            let mess = text "globally, " <+>
-                                       scopeError fun imp2' goal1 f y sub' lvars pf exp ypos
-                                m1 = m' $$ nest 2 mess 
-                            in [Res fun pf
-                                 ((Phi pos (Just goal)
-                                    (Just exp) gamma lvars):phi)
-                                 (Just m1) i]
-                     else let mess = scopeError fun imp2' goal1 f y sub' lvars1 pf exp ypos
-                          in [Res fun pf
-                               ((Phi pos (Just goal)
-                                  (Just exp) gamma lvars):phi)
-                               (Just mess) i]
+                              contm = foldl' (\ z x -> TApp z x) exp np     
+                              pf'' = replace pf' pos contm
+                              n = getValue lvars
+                              freshlvars = map (\ x -> (x, n)) fresh'
+                              gamma' = map (\ (x, t) -> (x, normalize $ apply (Subst sub') t)) gamma
+                              lvars' = applyS sub' (lvars++freshlvars)
+                              phi' = applyPhi sub' phi 
+                          in case phi' of
+                               Right p ->
+                                 return (Res fun pf''
+                                         (p++[Phi pos Nothing Nothing gamma' lvars'])
+                                          Nothing i')
+                               Left m' ->
+                                 let mess = text "globally, " <+>
+                                            scopeError fun imp2' goal f y sub' lvars pf exp ypos
+                                     m1 = m' $$ nest 2 mess 
+                                 in [Res fun pf
+                                     ((Phi pos (Just goal)
+                                       (Just exp) gamma lvars):phi)
+                                     (Just m1) i]
+                          else let mess = scopeError fun imp2' goal f y sub' lvars pf exp ypos
+                               in [Res fun pf
+                                    ((Phi pos (Just goal)
+                                      (Just exp) gamma lvars):phi)
+                                    (Just mess) i]
 
 
 transit arg@(Res fun pf

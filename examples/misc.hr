@@ -108,11 +108,12 @@ a1 = k1
 a2 :: Top -> Top
 a2 = k2
 
-k1' :: forall q . (forall y . q -> y) -> Bot
-k1' = undefined
+-- The following code will results scope error
+-- k1' :: forall q . (forall y . q -> y) -> Bot
+-- k1' = undefined
 
-k2' :: forall x . x -> x
-k2' = undefined
+-- k2' :: forall x . x -> x
+-- k2' = undefined
 
-test' :: Bot
-test' = k1' k2'
+-- test' :: Bot
+-- test' = k1' k2'
