@@ -142,6 +142,7 @@ get (MkP s g) = g
 
 pointSet :: forall p . NT p PointM -> (Obj p -> Nat -> Obj p)
 pointSet st (MkObj s m) i = let f = coerce st in MkObj (set (f m) s i) m
+-- pointSet st (MkObj s m) i = MkObj (set (coerce st m) s i) m
 
 pointClass :: Class PointM Nat
 pointClass = MkClass (\ extr over self -> MkP (\ r i -> over r i) (\ r -> extr r))

@@ -117,3 +117,6 @@ a2 = k2
 
 -- test' :: Bot
 -- test' = k1' k2'
+
+test'' :: List (forall a . a -> a)
+test'' = Nil
