@@ -2,6 +2,11 @@ module st where
 
 ------------------
 prog infixl 6 ++
+prog infixr 10 $
+
+($) :: forall a b . (a -> b) -> a -> b
+($) f a = f a
+
 data Char :: * where
 data List :: * -> * where
  Nil :: forall a . List a 
@@ -57,7 +62,7 @@ swap v w = readVar v `thenST` \ a ->
 primitive runST' :: forall a s . ST s a -> a
 
 test1 :: Bool
-test1 = let v = runST' (newVar True) in runST' (readVar v)
+test1 = let v = runST' $ newVar True in runST' $ readVar v
 
 primitive runST :: forall a . (forall s . ST s a) -> a
 primitive returnST :: forall a s . a -> ST s a
@@ -68,7 +73,7 @@ primitive returnST :: forall a s . a -> ST s a
 -- test2 = let v = runST (newVar True) in runST (readVar v)
 
 f :: forall a s . MutVar s a -> MutVar s a
-f v = runST (newVar v `thenST` \ w -> readVar w)
+f v = runST $ newVar v `thenST` \ w -> readVar w
 
 -- index
 data Ind :: * where
@@ -82,8 +87,8 @@ primitive freezeArr :: forall elt s . MutArr s Ind elt -> ST s (Array Ind elt)
 
 accumArray :: forall a b . (Ind, Ind) -> (a -> b -> a) -> a -> List (Ind, b) -> Array Ind a
 accumArray bnds f z ivs =
-   runST (newArr bnds z `thenST` \ a ->
-          fill a f ivs `thenST_` freezeArr a)
+   runST $ newArr bnds z `thenST` \ a ->
+             fill a f ivs `thenST_` freezeArr a
 
 fill :: forall a b s . MutArr s Ind a -> (a -> b -> a) -> List (Ind, b) -> ST s Unit
 fill a f Nil = returnST Unit
@@ -95,8 +100,8 @@ seqST = foldr thenST_ (returnST Unit)
 
 accumArray' :: forall a b . (Ind, Ind) -> (a -> b -> a) -> a -> List (Ind, b) -> Array Ind a
 accumArray' bnds f z ivs =
-   runST (newArr bnds z `thenST` \ a ->
-          seqST (map (update a f) ivs) `thenST_` freezeArr a)
+   runST $ newArr bnds z `thenST` \ a ->
+            seqST (map (update a f) ivs) `thenST_` freezeArr a
 
 update :: forall a b s . MutArr s Ind a -> (a -> b -> a) -> (Ind, b) -> ST s Unit
 update a f (Pair i v) = readArr a i `thenST` \ x -> writeArr a i (f x v)

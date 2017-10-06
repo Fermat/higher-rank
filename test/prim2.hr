@@ -56,10 +56,10 @@ test0 :: Pair Nat Bool
 test0 = ap poly id
 
 test1 :: Bool -> Nat
-test1 x = foo1 (\ y -> bar x y)
+test1 x = foo1 (bar x)
 
 test2 :: Bool -> Nat
-test2 = compose foo1 (\ x y -> bar x y)
+test2 = compose foo1 bar
 
 myBar :: (forall b . Bool -> b -> b) -> (Bool -> forall b . (b -> b))
 myBar b x y = b x y
