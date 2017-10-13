@@ -1,5 +1,9 @@
 module braun where
 
+-- The following programs are adapted from
+-- Aaron Stump and Peng Fu's
+-- Efficiency of lambda-encodings in total type theory
+
 data Braun :: * -> * where
  Leaf :: forall a . a -> Braun a
  Node :: forall a . Braun a -> Braun a -> Braun a
