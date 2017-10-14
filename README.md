@@ -24,4 +24,4 @@ A prototype type checker for higher-rank, impredicative and second-order types.
 
 * More information
 
-  please see author's website. 
+  please see the accompany paper. 
