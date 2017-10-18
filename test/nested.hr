@@ -1,8 +1,5 @@
 module nested where
 
-
-
-
 data Pair :: * -> * where
   Pair :: forall a . a -> a -> Pair a
 
@@ -29,7 +26,7 @@ map f (C a as) = C (f a) (map (square f) as)
 -- fold e f N = e
 -- fold e f (C a as) = f a (fold e f (map (foldP f) as))
 
-fold :: forall a b . b -> (forall f . f (Pair a) -> b -> b) -> Nested (Pair a) -> b
+fold :: forall a b . b -> (forall f . f a -> b -> b) -> Nested a -> b
 fold e f N = e
 fold e f (C a as) = f a (fold e f as)
 

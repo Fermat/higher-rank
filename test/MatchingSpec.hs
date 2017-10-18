@@ -104,16 +104,7 @@ exp31 = Imply (App (Var "p7" dummyPos) exp29) (App (Var "p7" dummyPos) (App (App
 exp32 = Imply (App (Const "P4" dummyPos) exp30) (App (Const "P4" dummyPos) (App (App (App (Const "F" dummyPos) (Const "Z" dummyPos)) (App (Const "S" dummyPos) (Const "X5" dummyPos))) (Const "Y6" dummyPos)))
 
 test12 = map disp $ runMatch exp31 exp32
-  -- can't match p7# (G (F Z x8# (S y9#)) (F x8# y9# (S (S Z))))
-  --             ->
-  --               p7# (F Z (S x8#) y9#)
-  -- against [p4#] (qa1# (F Z [x5#] (S [y6#])) [x5#] [y6#])
-  --         ->
-  --           [p4#] (F Z (S [x5#]) [y6#])
-  --   when applying k : forall p x y .
-  --                       p (G (F Z x (S y)) (F x y (S (S Z)))) -> p (F Z (S x) y)
-  --   current expression: k
-  --   current mixed proof term
-  --     g1 @(\ x1# . x1#) @qa1# @qb2# @F
-
-
+-- App (Const "Nested" dummyPos)
+exp33 =  (App (Const "Pair" dummyPos) (Var "a" dummyPos)) 
+exp34 =  (App (Var "h0#" dummyPos) (Const "A" dummyPos)) 
+test13 = map disp $ runMatch exp33 exp34
