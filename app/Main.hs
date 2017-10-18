@@ -22,7 +22,7 @@ main = flip catches handlers $ do
       case parseModule filename cnts of
              Left e -> throw e
              Right a -> do putStrLn $ "Parsing success! \n"
-                           print $ disp a
+--                           print $ disp a
                            kinding a 
                            let res = checkDecls a
                                ks = getKindDef a
@@ -34,7 +34,7 @@ main = flip catches handlers $ do
                                  Left e -> throw e
                                  Right _ ->
                                    do print $
-                                        text "Type checking and proof checking success, the following are the annotatated program: \n"
+                                        text "Type checking and proof checking success, the following are the annotatated programs: \n"
                                    
                                       print $ text "-----------------------------------------\n"
                                       print $ printTyped pfs
